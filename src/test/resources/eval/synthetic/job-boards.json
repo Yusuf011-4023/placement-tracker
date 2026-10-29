@@ -1,0 +1,182 @@
+[
+  {
+    "id": "jb-not-submitted-linkedin",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-011",
+      "threadId": "eval-thread-011",
+      "internetMessageId": "<eval-011@mail.example>",
+      "from": "LinkedIn <jobs-noreply@linkedin.com>",
+      "subject": "Your application to Lumen Retail Group is almost done",
+      "receivedAt": "2026-10-12T07:55:00Z",
+      "bodyText": "Alex, finish your application\n\nLumen Retail Group\nPlacement Year - Digital Merchandising (Industrial Placement)\nManchester, England, United Kingdom (Hybrid)\n\nYou started applying for this job but did not submit your application. Don't miss out - applications are closing soon.\n\n[Continue application]\n\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Lumen Retail Group",
+    "expectedStage": "NOT_SUBMITTED"
+  },
+  {
+    "id": "jb-applied-linkedin",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-012",
+      "threadId": "eval-thread-012",
+      "internetMessageId": "<eval-012@mail.example>",
+      "from": "LinkedIn <jobs-noreply@linkedin.com>",
+      "subject": "Alex, your application was sent to Oakridge Capital",
+      "receivedAt": "2026-10-13T20:31:00Z",
+      "bodyText": "Your application was sent to Oakridge Capital\n\nOakridge Capital\nSpring Insight Internship - Investment Banking\nLondon, England, United Kingdom\n\nApplied on 13 October 2026\n\nNext steps: the hiring team at Oakridge Capital will review your application. We'll let you know when they take action.\n\nSee similar jobs\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Oakridge Capital",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "jb-applied-bright-network",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-013",
+      "threadId": "eval-thread-013",
+      "internetMessageId": "<eval-013@mail.example>",
+      "from": "Bright Network <noreply@brightnetwork.co.uk>",
+      "subject": "Application submitted: Zephyr Motors - Placement Year, Powertrain Test",
+      "receivedAt": "2026-10-15T14:12:00Z",
+      "bodyText": "Hi Alex,\n\nGreat news - your application to Zephyr Motors for the Placement Year, Powertrain Test has been submitted through Bright Network.\n\nZephyr Motors will be in touch directly if they would like to take things further. In the meantime, why not browse more placements and internships on your dashboard?\n\nGood luck!\nThe Bright Network team\n\nBright Network, 3rd Floor, 40 Bowling Green Lane, London.\nYou are receiving this because you have a Bright Network account.\nUnsubscribe | Manage preferences | View in browser",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Zephyr Motors",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "jb-online-test-gradcracker",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-014",
+      "threadId": "eval-thread-014",
+      "internetMessageId": "<eval-014@mail.example>",
+      "from": "Gradcracker <hello@gradcracker.com>",
+      "subject": "Kestrel Defence has sent you an online assessment",
+      "receivedAt": "2026-10-26T09:00:00Z",
+      "bodyText": "Hi Alex,\n\nKestrel Defence has invited you to complete a numerical and situational judgement test for the Engineering Placement 2027 position you applied for via Gradcracker.\n\nThe test takes about 50 minutes and must be completed by Friday 13 November 2026. Use the link in your Kestrel Defence candidate email, or access it here: https://gradcracker.com/my/tests/kd\n\nGood luck!\n\nGradcracker Ltd | Terms | Privacy | Unsubscribe",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Kestrel Defence",
+    "expectedStage": "ONLINE_TEST"
+  },
+  {
+    "id": "jb-interview-ratemyplacement",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-015",
+      "threadId": "eval-thread-015",
+      "internetMessageId": "<eval-015@mail.example>",
+      "from": "RateMyPlacement <noreply@ratemyplacement.co.uk>",
+      "subject": "Pinecrest Health would like to interview you",
+      "receivedAt": "2026-10-29T08:00:00Z",
+      "bodyText": "Hi Alex,\n\nPinecrest Health has requested an interview for the Health Informatics Placement you applied for on RateMyPlacement.\n\nInterview details\nDate: Monday 9 November 2026\nTime: 10:30 GMT\nFormat: Telephone (they will call the number on your profile)\n\nPlease accept or decline the invitation in your RateMyPlacement inbox so Pinecrest Health can finalise their schedule.\n\nRateMyPlacement | Manage email preferences | Unsubscribe",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Pinecrest Health",
+    "expectedStage": "INTERVIEW"
+  },
+  {
+    "id": "jb-assessment-centre-linkedin",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-016",
+      "threadId": "eval-thread-016",
+      "internetMessageId": "<eval-016@mail.example>",
+      "from": "LinkedIn <messages-noreply@linkedin.com>",
+      "subject": "Solent Marine sent you a message: Assessment day invitation",
+      "receivedAt": "2026-10-27T17:25:00Z",
+      "bodyText": "Solent Marine sent you a message\n\nHi Alex,\n\nFollowing your interview for the Naval Architecture Placement, we'd like to invite you to our assessment centre in Southampton on Wednesday 25 November 2026. It will run from 09:00 to 16:00 and includes a technical exercise, a group task and lunch with current placement students.\n\nTravel costs are reimbursed. Please reply to confirm you can attend.\n\nKind regards\nHelen Marsh, Early Careers Partner, Solent Marine\n\n[Reply]  [View message]\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Solent Marine",
+    "expectedStage": "ASSESSMENT_CENTRE"
+  },
+  {
+    "id": "jb-offer-bright-network",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-017",
+      "threadId": "eval-thread-017",
+      "internetMessageId": "<eval-017@mail.example>",
+      "from": "Bright Network <noreply@brightnetwork.co.uk>",
+      "subject": "You have an offer from Arkwright Engineering!",
+      "receivedAt": "2026-10-23T11:11:00Z",
+      "bodyText": "Congratulations Alex!\n\nArkwright Engineering has made you an offer for the Mechanical Design Placement 2027.\n\nLog in to Bright Network to view the offer message from Arkwright Engineering and respond. They have asked for a reply by 30 October 2026.\n\nRemember, you can update your application status on your dashboard once you decide.\n\nBright Network, 3rd Floor, 40 Bowling Green Lane, London.\nYou are receiving this because you have a Bright Network account.\nUnsubscribe | Manage preferences | View in browser",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Arkwright Engineering",
+    "expectedStage": "OFFER"
+  },
+  {
+    "id": "jb-rejected-linkedin",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-018",
+      "threadId": "eval-thread-018",
+      "internetMessageId": "<eval-018@mail.example>",
+      "from": "LinkedIn <jobs-noreply@linkedin.com>",
+      "subject": "Your application to Vantage Telecom",
+      "receivedAt": "2026-10-19T06:45:00Z",
+      "bodyText": "Your update from Vantage Telecom\n\nHi Alex, thank you for your interest in the Network Engineering Placement Student role at Vantage Telecom.\n\nUnfortunately, the team has decided not to move forward with your application at this time.\n\nJobs you may be interested in:\n- Placement Student - Cloud Support, Reading\n- Internship - Data Centre Operations, Slough\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Vantage Telecom",
+    "expectedStage": "REJECTED"
+  },
+  {
+    "id": "jb-withdrawn-indeed",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-019",
+      "threadId": "eval-thread-019",
+      "internetMessageId": "<eval-019@mail.example>",
+      "from": "Indeed Apply <indeedapply@indeed.com>",
+      "subject": "You withdrew your application to Marlow Consulting",
+      "receivedAt": "2026-10-11T18:20:00Z",
+      "bodyText": "Your application has been withdrawn\n\nYou withdrew your application for Business Analyst Placement (Year in Industry) at Marlow Consulting.\n\nIf this was a mistake, you can apply again as long as the job is still open.\n\nIndeed, Inc. 6433 Champion Grandview Way, Austin, TX 78750\nUnsubscribe from Indeed emails | Privacy | Help Centre",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Marlow Consulting",
+    "expectedStage": "WITHDRAWN"
+  }
+]
