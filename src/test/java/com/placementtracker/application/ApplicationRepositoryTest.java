@@ -105,6 +105,25 @@ class ApplicationRepositoryTest {
 	}
 
 	@Test
+	void mergeIntoClosedTargetClosesMovedActionsAndCarriesLocks() {
+		long target = apps.insert("Acme", "acme", null, Stage.REJECTED, null, null);
+		long source = apps.insert("Acme2", "acme2", null, Stage.ONLINE_TEST, null, null);
+		long aid = actions.insert(source, "Do test", null, Stage.ONLINE_TEST, null);
+		apps.lock(source, "role");
+		jdbc.update("UPDATE applications SET updated_at = '2026-01-01T00:00:00Z' WHERE id = ?", target);
+
+		apps.mergeInto(target, source);
+
+		assertThat(actions.findForApplication(target)).singleElement().satisfies(a -> {
+			assertThat(a.id()).isEqualTo(aid);
+			assertThat(a.status()).isEqualTo(ApplicationAction.Status.CLOSED);
+		});
+		assertThat(apps.find(target).orElseThrow().lockedFields()).contains("role");
+		assertThat(jdbc.queryForObject("SELECT updated_at FROM applications WHERE id = ?", String.class, target))
+				.isNotEqualTo("2026-01-01T00:00:00Z");
+	}
+
+	@Test
 	void mergeIntoSelfIsRejectedAndDeletesNothing() {
 		long id = apps.insert("Acme", "acme", null, Stage.APPLIED, null, null);
 		actions.insert(id, "Do test", null, Stage.ONLINE_TEST, null);

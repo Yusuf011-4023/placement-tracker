@@ -127,14 +127,26 @@ public class ApplicationRepository {
 				throw new IllegalArgumentException("No such application: " + id);
 			}
 		}
+		Stage targetStage = Stage.valueOf(jdbc.sql("SELECT stage FROM applications WHERE id = ?").param(targetId)
+				.query(String.class).single());
+		if (targetStage.isClosed()) {
+			// a closed application has no open to-dos; the moved ones would otherwise linger in Needs action
+			jdbc.sql("UPDATE actions SET status = 'CLOSED' WHERE application_id = ? AND status = 'OPEN'")
+					.param(sourceId).update();
+		}
 		jdbc.sql("UPDATE emails SET application_id = ? WHERE application_id = ?").params(targetId, sourceId).update();
 		jdbc.sql("UPDATE actions SET application_id = ? WHERE application_id = ?").params(targetId, sourceId).update();
 		jdbc.sql("UPDATE stage_history SET application_id = ? WHERE application_id = ?")
 				.params(targetId, sourceId).update();
 		jdbc.sql("UPDATE review_items SET application_id = ? WHERE application_id = ?")
 				.params(targetId, sourceId).update();
+		// the owner's edits on the source stay protected on the merged application
+		jdbc.sql("INSERT OR IGNORE INTO field_locks (application_id, field) "
+				+ "SELECT ?, field FROM field_locks WHERE application_id = ?").params(targetId, sourceId).update();
 		jdbc.sql("DELETE FROM field_locks WHERE application_id = ?").param(sourceId).update();
 		jdbc.sql("DELETE FROM applications WHERE id = ?").param(sourceId).update();
+		jdbc.sql("UPDATE applications SET updated_at = ? WHERE id = ?").params(Instant.now().toString(), targetId)
+				.update();
 	}
 
 	private Application map(ResultSet rs, int row) throws SQLException {
