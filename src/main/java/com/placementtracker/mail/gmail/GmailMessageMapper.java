@@ -23,7 +23,7 @@ public final class GmailMessageMapper {
 	private static final Map<String, String> LABELS = Map.of("SPAM", "SPAM", "CATEGORY_PROMOTIONS", "PROMOTIONS",
 			"CATEGORY_SOCIAL", "SOCIAL", "CATEGORY_UPDATES", "UPDATES");
 
-	private static final Pattern CHARSET = Pattern.compile("charset=\"?([^\";\s]+)\"?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern CHARSET = Pattern.compile("charset=\"?([^\";\\s]+)\"?", Pattern.CASE_INSENSITIVE);
 
 	private GmailMessageMapper() {
 	}

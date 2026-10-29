@@ -37,4 +37,14 @@ class DedupeKeysTest {
 
 		assertThat(DedupeKeys.of(a)).isNotEqualTo(DedupeKeys.of(b));
 	}
+
+	@Test
+	void tabsAndNewlinesNormalisedLikeSpaces() {
+		MailMessage spaced = msg(null, "hr@acme.com", "Interview  invite", "2026-10-20T10:00:00Z");
+		MailMessage tabbed = msg(null, "hr@acme.com", "Interview\tinvite", "2026-10-20T10:01:00Z");
+		MailMessage folded = msg(null, "hr@acme.com", "Re:\tInterview\r\n invite", "2026-10-20T10:02:00Z");
+
+		assertThat(DedupeKeys.of(tabbed)).isEqualTo(DedupeKeys.of(spaced));
+		assertThat(DedupeKeys.of(folded)).isEqualTo(DedupeKeys.of(spaced));
+	}
 }

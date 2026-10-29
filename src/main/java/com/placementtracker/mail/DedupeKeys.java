@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 public final class DedupeKeys {
 
 	private static final long BUCKET_SECONDS = 10 * 60;
-	private static final Pattern REPLY_PREFIX = Pattern.compile("^\s*(?:(?:re|fwd|fw)\s*:\s*)+",
+	private static final Pattern REPLY_PREFIX = Pattern.compile("^\\s*(?:(?:re|fwd|fw)\\s*:\\s*)+",
 			Pattern.CASE_INSENSITIVE);
 
 	private DedupeKeys() {
@@ -33,7 +33,7 @@ public final class DedupeKeys {
 			return "";
 		}
 		String s = REPLY_PREFIX.matcher(subject).replaceFirst("");
-		return s.trim().replaceAll("\s+", " ").toLowerCase(Locale.ROOT);
+		return s.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
 	}
 
 	private static String sha256(String input) {

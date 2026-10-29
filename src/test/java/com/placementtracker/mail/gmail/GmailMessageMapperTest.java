@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.gmail.model.Message;
+import com.google.api.services.gmail.model.MessagePart;
+import com.google.api.services.gmail.model.MessagePartBody;
+import com.google.api.services.gmail.model.MessagePartHeader;
 import com.placementtracker.mail.MailAccount;
 import com.placementtracker.mail.MailMessage;
 
@@ -66,5 +69,17 @@ class GmailMessageMapperTest {
 				.isEqualTo("<abc@mail.acme.com>");
 		assertThat(GmailMessageMapper.toMailMessage(load("html-only.json")).internetMessageId())
 				.isEqualTo("<m2@x.com>");
+	}
+
+	@Test
+	void charsetFollowedByTabIsHonoured() {
+		byte[] latin1 = "Caf\u00e9 interview".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+		MessagePart part = new MessagePart().setMimeType("text/plain")
+				.setHeaders(java.util.List.of(new MessagePartHeader().setName("Content-Type")
+						.setValue("text/plain; charset=ISO-8859-1\tformat=flowed")))
+				.setBody(new MessagePartBody().encodeData(latin1));
+		Message m = new Message().setId("x").setThreadId("t").setInternalDate(0L).setPayload(part);
+
+		assertThat(GmailMessageMapper.toMailMessage(m).bodyText()).isEqualTo("Caf\u00e9 interview");
 	}
 }
