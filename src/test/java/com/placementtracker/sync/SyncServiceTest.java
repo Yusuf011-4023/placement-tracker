@@ -61,6 +61,7 @@ class SyncServiceTest {
 	@Autowired EmailRepository emails;
 	@Autowired SyncStateRepository state;
 	@Autowired ReviewRepository reviews;
+	@Autowired FailureRecorder failures;
 	@Autowired ApplicationRepository apps;
 	@Autowired TrackerProperties props;
 	@Autowired JdbcTemplate jdbc;
@@ -82,7 +83,7 @@ class SyncServiceTest {
 	}
 
 	SyncService service(MailSource... sources) {
-		return new SyncService(List.of(sources), preFilter, classifier, processor, emails, state, reviews, props);
+		return new SyncService(List.of(sources), preFilter, classifier, processor, emails, state, failures, props);
 	}
 
 	@Test
@@ -275,6 +276,92 @@ class SyncServiceTest {
 		assertThat(state.get(MailAccount.GMAIL).highWater()).isEqualTo(Instant.parse("2026-09-01T11:00:00Z"));
 	}
 
+	@Test
+	void retryableFailuresDoNotConsumeAttempts() {
+		gmail.add(msg(MailAccount.GMAIL, "r", "<r@x>", "Application RETRY", Instant.parse("2026-09-01T10:00:00Z")));
+		classifier.failWhenSubjectContains = "RETRY";
+		classifier.failRetryable = true;
+		SyncService svc = service(gmail);
+
+		for (int i = 0; i < 5; i++) {
+			svc.syncAll();
+		}
+
+		assertThat(attempts("r")).isZero();
+		assertThat(status(MailAccount.GMAIL, "r")).isEqualTo(EmailStatus.FAILED);
+		assertThat(lastError("r")).contains("api down");
+		assertThat(reviews.findOpen()).isEmpty();
+		classifier.failWhenSubjectContains = null;
+		svc.syncAll();
+		assertThat(status(MailAccount.GMAIL, "r")).isEqualTo(EmailStatus.PROCESSED);
+	}
+
+	@Test
+	void circuitBreakerStopsRunAfterThreeConsecutiveFailures() {
+		for (int i = 0; i < 5; i++) {
+			gmail.add(msg(MailAccount.GMAIL, "m" + i, "<m" + i + "@x>", "Application " + i,
+					Instant.parse("2026-09-01T1" + i + ":00:00Z")));
+		}
+		classifier.failAll = true;
+
+		service(gmail).syncAll();
+
+		assertThat(classifier.calls).isEqualTo(3);
+		assertThat(status(MailAccount.GMAIL, "m0")).isEqualTo(EmailStatus.FAILED);
+		assertThat(status(MailAccount.GMAIL, "m3")).isEqualTo(EmailStatus.PENDING);
+		assertThat(status(MailAccount.GMAIL, "m4")).isEqualTo(EmailStatus.PENDING);
+		assertThat(count("emails WHERE attempts > 0")).isZero();
+		assertThat(reviews.findOpen()).isEmpty();
+	}
+
+	@Test
+	void failedAtCapIsReviewedNotLost() {
+		gmail.add(msg(MailAccount.GMAIL, "x", "<x@x>", "Application received", Instant.parse("2026-09-01T10:00:00Z")));
+		SyncService svc = service(gmail);
+		classifier.configured = false;
+		svc.syncAll();
+		jdbc.update("UPDATE emails SET status = 'FAILED', attempts = 3 WHERE message_id = 'x'");
+		classifier.configured = true;
+
+		SyncReport r = svc.syncAll();
+
+		assertThat(status(MailAccount.GMAIL, "x")).isEqualTo(EmailStatus.REVIEW);
+		assertThat(reviews.findOpen()).hasSize(1);
+		assertThat(reviews.findOpen().get(0).reason()).isEqualTo(ReviewReason.AI_FAILED);
+		assertThat(r.newReviewItems()).isEqualTo(1);
+		assertThat(classifier.calls).isZero();
+	}
+
+	@Test
+	void duplicateRevivedWhenSurvivingCopyDeleted() {
+		Instant t = Instant.parse("2026-09-01T10:00:00Z");
+		gmail.add(msg(MailAccount.GMAIL, "g1", "<same@x>", "Application received", t));
+		outlook.add(msg(MailAccount.OUTLOOK, "o1", "<same@x>", "Application received", t));
+		classifier.configured = false;
+		SyncService svc = service(gmail, outlook);
+		svc.syncAll();
+		assertThat(status(MailAccount.OUTLOOK, "o1")).isEqualTo(EmailStatus.DUPLICATE);
+		gmail.messages.clear();
+		gmail.fetchOneMap.clear(); // deleted at the source
+		classifier.configured = true;
+
+		svc.syncAll();
+
+		assertThat(status(MailAccount.GMAIL, "g1")).isEqualTo(EmailStatus.FILTERED);
+		assertThat(status(MailAccount.OUTLOOK, "o1")).isEqualTo(EmailStatus.PROCESSED);
+		assertThat(apps.findAll()).hasSize(1);
+	}
+
+	@Test
+	void futureDatedMessageDoesNotAdvanceHighWaterPastNow() {
+		gmail.add(msg(MailAccount.GMAIL, "f", "<f@x>", "Application received", Instant.now().plus(30, ChronoUnit.DAYS)));
+
+		service(gmail).syncAll();
+
+		assertThat(state.get(MailAccount.GMAIL).highWater()).isBeforeOrEqualTo(Instant.now());
+		assertThat(status(MailAccount.GMAIL, "f")).isEqualTo(EmailStatus.PROCESSED);
+	}
+
 	// ---- helpers ----
 
 	int count(String table) {
@@ -352,6 +439,8 @@ class SyncServiceTest {
 		boolean configured = true;
 		int calls;
 		String failWhenSubjectContains;
+		boolean failRetryable;
+		boolean failAll;
 		String runtimeWhenSubjectContains;
 		String unsureWhenSubjectContains;
 		String actionDescription;
@@ -362,8 +451,11 @@ class SyncServiceTest {
 
 		public Classification classify(MailMessage m) throws ClassificationException {
 			calls++;
+			if (failAll) {
+				throw new ClassificationException("outage", true);
+			}
 			if (failWhenSubjectContains != null && m.subject().contains(failWhenSubjectContains)) {
-				throw new ClassificationException("api down", true);
+				throw new ClassificationException("api down", failRetryable);
 			}
 			if (runtimeWhenSubjectContains != null && m.subject().contains(runtimeWhenSubjectContains)) {
 				throw new IllegalStateException("kaboom");

@@ -147,6 +147,21 @@ class ClaudeEmailClassifierTest {
 	}
 
 	@Test
+	void authErrorIsRetryable() {
+		Headers h = Headers.builder().build();
+		ClaudeEmailClassifier unauthorized = new ClaudeEmailClassifier(p -> {
+			throw com.anthropic.errors.UnauthorizedException.builder().headers(h).body(JsonValue.from("x")).build();
+		}, props);
+		ClaudeEmailClassifier forbidden = new ClaudeEmailClassifier(p -> {
+			throw com.anthropic.errors.PermissionDeniedException.builder().headers(h).body(JsonValue.from("x")).build();
+		}, props);
+		assertThatThrownBy(() -> unauthorized.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+		assertThatThrownBy(() -> forbidden.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+	}
+
+	@Test
 	void bodyTruncatedTo20kChars() throws Exception {
 		classifierReturning(JSON, StopReason.END_TURN).classify(mail("a".repeat(20_000) + "TAIL"));
 		String user = userText(captured.get(0));

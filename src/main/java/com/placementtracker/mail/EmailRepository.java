@@ -46,7 +46,8 @@ public class EmailRepository {
 
 	/** True when an email with a lower id has the same key, so exactly one of a set of duplicates survives. */
 	public boolean existsDedupeKeyBefore(String key, long id) {
-		Integer n = jdbc.sql("SELECT COUNT(*) FROM emails WHERE dedupe_key = ? AND id < ?")
+		// A FILTERED earlier copy (e.g. deleted at the source) no longer counts as the surviving one.
+		Integer n = jdbc.sql("SELECT COUNT(*) FROM emails WHERE dedupe_key = ? AND id < ? AND status <> 'FILTERED'")
 				.params(key, id).query(Integer.class).single();
 		return n > 0;
 	}
@@ -68,6 +69,29 @@ public class EmailRepository {
 	public List<EmailRecord> findRetryable(int maxAttempts) {
 		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE status = 'FAILED' AND attempts < ? ORDER BY id")
 				.param(maxAttempts).query(this::map).list();
+	}
+
+	/** Stores the error without counting an attempt (outage, bad key). */
+	public void recordError(long id, String error) {
+		jdbc.sql("UPDATE emails SET last_error = ? WHERE id = ?").params(error, id).update();
+	}
+
+	/** FAILED emails that used up their attempts but never reached the review queue. */
+	public List<EmailRecord> findFailedAtCap(int maxAttempts) {
+		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE status = 'FAILED' AND attempts >= ? ORDER BY id")
+				.param(maxAttempts).query(this::map).list();
+	}
+
+	/** Returns the lowest-id DUPLICATE with this key to PENDING, so it is handled again. */
+	@Transactional
+	public Optional<EmailRecord> reviveDuplicate(String dedupeKey) {
+		Optional<Long> id = jdbc.sql("SELECT id FROM emails WHERE dedupe_key = ? AND status = 'DUPLICATE' ORDER BY id LIMIT 1")
+				.param(dedupeKey).query(Long.class).optional();
+		if (id.isEmpty()) {
+			return Optional.empty();
+		}
+		setStatus(id.get(), EmailStatus.PENDING);
+		return find(id.get());
 	}
 
 	/** Emails never classified (no API key yet, or a crash mid-run). */

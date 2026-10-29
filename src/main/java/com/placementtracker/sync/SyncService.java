@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.placementtracker.classify.Classification;
+import com.placementtracker.classify.ClassificationException;
 import com.placementtracker.classify.EmailClassifier;
 import com.placementtracker.config.TrackerProperties;
 import com.placementtracker.mail.DedupeKeys;
@@ -31,8 +32,6 @@ import com.placementtracker.mail.MailSourceException;
 import com.placementtracker.mail.PreFilter;
 import com.placementtracker.processing.EmailProcessor;
 import com.placementtracker.processing.ProcessOutcome;
-import com.placementtracker.review.ReviewReason;
-import com.placementtracker.review.ReviewRepository;
 
 /**
  * Pulls mail from every connected source, de-duplicates and pre-filters it, classifies what is left and applies the
@@ -42,6 +41,9 @@ import com.placementtracker.review.ReviewRepository;
 @Service
 public class SyncService {
 
+	/** Consecutive classification failures after which a run stops calling the classifier. */
+	static final int BREAKER_THRESHOLD = 3;
+
 	private static final Logger log = LoggerFactory.getLogger(SyncService.class);
 
 	private final List<MailSource> sources;
@@ -50,19 +52,19 @@ public class SyncService {
 	private final EmailProcessor processor;
 	private final EmailRepository emails;
 	private final SyncStateRepository syncState;
-	private final ReviewRepository reviews;
+	private final FailureRecorder failures;
 	private final TrackerProperties props;
 
 	/** Spring constructor: tolerates there being no MailSource beans yet. */
 	@Autowired
 	public SyncService(ObjectProvider<MailSource> sources, PreFilter preFilter, EmailClassifier classifier,
-			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, ReviewRepository reviews,
+			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, FailureRecorder failures,
 			TrackerProperties props) {
-		this(sources.orderedStream().toList(), preFilter, classifier, processor, emails, syncState, reviews, props);
+		this(sources.orderedStream().toList(), preFilter, classifier, processor, emails, syncState, failures, props);
 	}
 
 	public SyncService(List<MailSource> sources, PreFilter preFilter, EmailClassifier classifier,
-			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, ReviewRepository reviews,
+			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, FailureRecorder failures,
 			TrackerProperties props) {
 		this.sources = List.copyOf(sources);
 		this.preFilter = preFilter;
@@ -70,7 +72,7 @@ public class SyncService {
 		this.processor = processor;
 		this.emails = emails;
 		this.syncState = syncState;
-		this.reviews = reviews;
+		this.failures = failures;
 		this.props = props;
 	}
 
@@ -104,6 +106,7 @@ public class SyncService {
 		}
 		Instant previous = syncState.get(account).highWater();
 		Instant since = previous == null ? props.sync().backfillFrom() : previous.minus(1, ChronoUnit.DAYS);
+		Instant fetchStarted = Instant.now();
 		List<MailMessage> messages;
 		try {
 			messages = source.fetchSince(since);
@@ -123,8 +126,11 @@ public class SyncService {
 		run.fetched += messages.size();
 		Instant newest = previous;
 		for (MailMessage m : messages) {
-			if (m.receivedAt() != null && (newest == null || m.receivedAt().isAfter(newest))) {
-				newest = m.receivedAt();
+			// Capped at fetch start so one future-dated message cannot push the window past real mail.
+			Instant seenAt = m.receivedAt() == null ? null
+					: (m.receivedAt().isAfter(fetchStarted) ? fetchStarted : m.receivedAt());
+			if (seenAt != null && (newest == null || seenAt.isAfter(newest))) {
+				newest = seenAt;
 			}
 			Optional<EmailRecord> rec = emails.insertIfNew(m, DedupeKeys.of(m));
 			if (rec.isPresent()) {
@@ -150,7 +156,18 @@ public class SyncService {
 			if (!run.aiConfigured) {
 				return; // stays PENDING, no attempt burned; picked up once a key exists
 			}
-			Classification c = classifier.classify(m);
+			if (run.breakerOpen()) {
+				return; // AI looks down: leave as is, no attempt counted
+			}
+			Classification c;
+			try {
+				c = classifier.classify(m);
+				run.consecutiveFailures = 0;
+			}
+			catch (ClassificationException | RuntimeException e) {
+				run.consecutiveFailures++;
+				throw e;
+			}
 			run.classified++;
 			ProcessOutcome outcome = processor.process(rec, m, c);
 			switch (outcome) {
@@ -169,15 +186,11 @@ public class SyncService {
 	private void recordFailure(EmailRecord rec, Exception e, Run run) {
 		String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
 		log.warn("Email {} failed: {}", rec.id(), msg);
+		// Outages and bad keys (retryable) never use up attempts; everything else does.
+		boolean count = !(e instanceof ClassificationException ce && ce.isRetryable());
 		try {
-			int attempts = emails.recordFailure(rec.id(), msg);
-			if (attempts >= props.ai().maxAttempts()) {
-				reviews.open(rec.id(), rec.applicationId(), ReviewReason.AI_FAILED, "{}");
-				emails.setStatus(rec.id(), EmailStatus.REVIEW);
+			if (failures.record(rec, msg, count, props.ai().maxAttempts())) {
 				run.newReviewItems++;
-			}
-			else {
-				emails.setStatus(rec.id(), EmailStatus.FAILED);
 			}
 		}
 		catch (RuntimeException inner) {
@@ -187,13 +200,27 @@ public class SyncService {
 
 	/** Retries FAILED emails under the attempt cap and anything left PENDING, re-fetching each by message id. */
 	private void retryPass(Run run) {
+		for (EmailRecord rec : emails.findFailedAtCap(props.ai().maxAttempts())) {
+			try {
+				if (failures.escalate(rec)) {
+					run.newReviewItems++;
+				}
+			}
+			catch (RuntimeException e) {
+				log.error("Could not escalate email {}", rec.id(), e);
+			}
+		}
 		if (!run.aiConfigured) {
 			return;
 		}
 		List<EmailRecord> todo = new ArrayList<>(emails.findRetryable(props.ai().maxAttempts()));
 		todo.addAll(emails.findPending());
 		Set<Long> seen = new HashSet<>();
-		for (EmailRecord rec : todo) {
+		for (int i = 0; i < todo.size(); i++) {
+			EmailRecord rec = todo.get(i);
+			if (run.breakerOpen()) {
+				break;
+			}
 			if (run.handled.contains(rec.id()) || !seen.add(rec.id())) {
 				continue;
 			}
@@ -212,6 +239,8 @@ public class SyncService {
 			if (m.isEmpty()) {
 				log.warn("Message {} ({}) no longer exists; marking FILTERED", rec.messageId(), rec.account());
 				emails.setStatus(rec.id(), EmailStatus.FILTERED);
+				// a DUPLICATE sibling must not stay stranded behind a copy that no longer exists
+				emails.reviveDuplicate(rec.dedupeKey()).ifPresent(todo::add);
 				continue;
 			}
 			handle(rec, m.get(), run);
@@ -227,9 +256,14 @@ public class SyncService {
 		int created;
 		int updated;
 		int newReviewItems;
+		int consecutiveFailures;
 
 		Run(boolean aiConfigured) {
 			this.aiConfigured = aiConfigured;
+		}
+
+		boolean breakerOpen() {
+			return consecutiveFailures >= BREAKER_THRESHOLD;
 		}
 
 		SyncReport report(List<Long> actionIds) {

@@ -77,6 +77,10 @@ public class ClaudeEmailClassifier implements EmailClassifier {
 		try {
 			response = call.send(params);
 		}
+		catch (com.anthropic.errors.UnauthorizedException | com.anthropic.errors.PermissionDeniedException e) {
+			// A bad or revoked key: the owner fixes it by updating the key, so keep the email waiting.
+			throw new ClassificationException("Anthropic API key rejected: " + e.getMessage(), e, true);
+		}
 		catch (AnthropicServiceException e) {
 			int status = e.statusCode();
 			boolean retryable = status == 429 || status >= 500;
