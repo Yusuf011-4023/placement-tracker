@@ -38,6 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 public class EmailProcessor {
 
 	private static final String SOURCE_EMAIL = "EMAIL";
+	private static final String SOURCE_USER = "USER";
 
 	private final ApplicationRepository apps;
 	private final ActionRepository actions;
@@ -90,13 +91,44 @@ public class EmailProcessor {
 		return copy;
 	}
 
+	/**
+	 * Applies a classification the owner has decided on, with no confidence check and no stage locks. A null
+	 * applicationId creates a new application; otherwise that application is moved to the classification's stage.
+	 * History is recorded with source USER. A locked stage stays locked, now holding the new value.
+	 */
+	@Transactional
+	public void applyConfirmed(EmailRecord email, Classification c, Long applicationId) {
+		if (c == null || c.stage() == null) {
+			throw new IllegalArgumentException("A stage is required to apply this email");
+		}
+		if (applicationId == null) {
+			if (c.company() == null || c.company().isBlank()) {
+				throw new IllegalArgumentException("A company is required to create an application");
+			}
+			createApplication(email, email.receivedAt(), c, SOURCE_USER);
+		}
+		else {
+			Application app = apps.find(applicationId)
+					.orElseThrow(() -> new IllegalArgumentException("No such application: " + applicationId));
+			emails.linkApplication(email.id(), applicationId);
+			moveToStage(app, c, email.id(), SOURCE_USER);
+		}
+		emails.setStatus(email.id(), EmailStatus.PROCESSED);
+	}
+
 	private ProcessOutcome create(EmailRecord email, MailMessage m, Classification c) {
+		createApplication(email, m.receivedAt(), c, SOURCE_EMAIL);
+		emails.setStatus(email.id(), EmailStatus.PROCESSED);
+		return ProcessOutcome.CREATED;
+	}
+
+	private void createApplication(EmailRecord email, java.time.Instant receivedAt, Classification c, String source) {
 		Stage stage = c.stage();
-		var appliedOn = stage == Stage.NOT_SUBMITTED || m.receivedAt() == null ? null
-				: m.receivedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+		var appliedOn = stage == Stage.NOT_SUBMITTED || receivedAt == null ? null
+				: receivedAt.atOffset(ZoneOffset.UTC).toLocalDate();
 		long id = apps.insert(c.company().trim(), CompanyNames.key(c.company()), blankToNull(c.role()), stage,
 				appliedOn, null);
-		history.record(id, null, stage, SOURCE_EMAIL, email.id());
+		history.record(id, null, stage, source, email.id());
 		if (stage == Stage.INTERVIEW) {
 			apps.incrementInterviewRounds(id);
 		}
@@ -104,44 +136,44 @@ public class EmailProcessor {
 		if (!stage.isClosed()) {
 			addActions(id, c, stage, email.id(), c.company().trim());
 		}
-		emails.setStatus(email.id(), EmailStatus.PROCESSED);
-		return ProcessOutcome.CREATED;
 	}
 
 	private ProcessOutcome update(EmailRecord email, long appId, Classification c) {
 		Application app = apps.find(appId).orElseThrow();
 		emails.linkApplication(email.id(), appId);
-		Stage proposed = c.stage();
-		TransitionDecision d = StageRules.decide(app.stage(), proposed, app.lockedFields().contains("stage"));
-		switch (d.kind()) {
-			case REVIEW -> {
-				return review(email, appId, d.reason(), c, null);
-			}
-			case APPLY -> {
-				actions.closeOpenForStage(appId, app.stage());
-				apps.updateStage(appId, proposed);
-				history.record(appId, app.stage(), proposed, SOURCE_EMAIL, email.id());
-				if (proposed == Stage.INTERVIEW) {
-					apps.incrementInterviewRounds(appId);
-				}
-				if (proposed.isClosed()) {
-					actions.closeAllOpen(appId);
-				}
-				else {
-					addActions(appId, c, proposed, email.id(), app.company());
-				}
-			}
-			case NO_CHANGE -> {
-				if (!proposed.isClosed()) {
-					int added = addActions(appId, c, proposed, email.id(), app.company());
-					if (added > 0 && proposed == Stage.INTERVIEW) {
-						apps.incrementInterviewRounds(appId);
-					}
-				}
-			}
+		TransitionDecision d = StageRules.decide(app.stage(), c.stage(), app.lockedFields().contains("stage"));
+		if (d.kind() == TransitionDecision.Kind.REVIEW) {
+			return review(email, appId, d.reason(), c, null);
 		}
+		moveToStage(app, c, email.id(), SOURCE_EMAIL);
 		emails.setStatus(email.id(), EmailStatus.PROCESSED);
 		return ProcessOutcome.UPDATED;
+	}
+
+	/** Moves an existing application to c.stage() (or just adds actions if unchanged), without any gating. */
+	private void moveToStage(Application app, Classification c, long emailId, String source) {
+		long appId = app.id();
+		Stage proposed = c.stage();
+		if (proposed != app.stage()) {
+			actions.closeOpenForStage(appId, app.stage());
+			apps.updateStage(appId, proposed);
+			history.record(appId, app.stage(), proposed, source, emailId);
+			if (proposed == Stage.INTERVIEW) {
+				apps.incrementInterviewRounds(appId);
+			}
+			if (proposed.isClosed()) {
+				actions.closeAllOpen(appId);
+			}
+			else {
+				addActions(appId, c, proposed, emailId, app.company());
+			}
+		}
+		else if (!proposed.isClosed()) {
+			int added = addActions(appId, c, proposed, emailId, app.company());
+			if (added > 0 && proposed == Stage.INTERVIEW) {
+				apps.incrementInterviewRounds(appId);
+			}
+		}
 	}
 
 	/**
