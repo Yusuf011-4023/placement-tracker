@@ -53,7 +53,9 @@ public class ReviewService {
 	@Transactional
 	public void dismissNotPlacement(long reviewId) {
 		ReviewItem item = openItem(reviewId);
-		emails.setStatus(emailOf(item).id(), EmailStatus.NOT_PLACEMENT);
+		long emailId = emailOf(item).id();
+		emails.setStatus(emailId, EmailStatus.NOT_PLACEMENT);
+		emails.unlinkApplication(emailId); // not about any application, so it must not show in one's history
 		reviews.resolve(reviewId);
 	}
 

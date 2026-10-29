@@ -56,6 +56,10 @@ public class EmailRepository {
 		jdbc.sql("UPDATE emails SET status = ? WHERE id = ?").params(s.name(), id).update();
 	}
 
+	public void unlinkApplication(long id) {
+		jdbc.sql("UPDATE emails SET application_id = NULL WHERE id = ?").param(id).update();
+	}
+
 	public void linkApplication(long id, long appId) {
 		jdbc.sql("UPDATE emails SET application_id = ? WHERE id = ?").params(appId, id).update();
 	}

@@ -136,6 +136,22 @@ class ReviewServiceTest {
 	}
 
 	@Test
+	void dismissUnlinksTheEmailFromItsApplication() {
+		processor.process(email("t1"), mail("t1"), cls("Acme", Stage.APPLIED, 0.9));
+		long appId = apps.findAll().get(0).id();
+		EmailRecord e = email("t1"); // same thread, so it is linked to Acme before going to review
+		processor.process(e, mail("t1"), cls("Acme", Stage.INTERVIEW, 0.4));
+		assertThat(emails.find(e.id()).orElseThrow().applicationId()).isEqualTo(appId);
+		ReviewItem item = reviews.findOpen().get(0);
+
+		service.dismissNotPlacement(item.id());
+
+		EmailRecord after = emails.find(e.id()).orElseThrow();
+		assertThat(after.status()).isEqualTo(EmailStatus.NOT_PLACEMENT);
+		assertThat(after.applicationId()).isNull();
+	}
+
+	@Test
 	void attachLinksEmailAndAddsActions() {
 		processor.process(email("t1"), mail("t1"), cls("Acme", Stage.APPLIED, 0.9));
 		long appId = apps.findAll().get(0).id();
