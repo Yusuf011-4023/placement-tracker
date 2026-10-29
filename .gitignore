@@ -1,0 +1,8 @@
+target/
+.superpowers/
+*.db
+config.properties
+google-client-secret.json
+tokens/
+src/test/resources/eval/private/
+.env
