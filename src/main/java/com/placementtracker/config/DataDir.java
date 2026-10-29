@@ -23,7 +23,8 @@ public class DataDir {
 		}
 	}
 
-	private static Path defaultRoot() {
+	/** The default location, {@code %LOCALAPPDATA%\PlacementTracker}; does not create it. */
+	public static Path defaultRoot() {
 		String base = System.getenv("LOCALAPPDATA");
 		Path localAppData = base != null && !base.isBlank() ? Path.of(base)
 				: Path.of(System.getProperty("user.home"), "AppData", "Local");

@@ -3,17 +3,24 @@ package com.placementtracker.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import com.placementtracker.classify.Classification;
 import com.placementtracker.classify.ClassificationException;
 import com.placementtracker.classify.ClaudeEmailClassifier;
 import com.placementtracker.classify.Relevance;
+import com.placementtracker.config.DataDir;
 import com.placementtracker.matching.CompanyNames;
 
 /**
@@ -29,6 +36,20 @@ class ClassificationEvalTest {
 
 	@Autowired
 	private ClaudeEmailClassifier classifier;
+
+	/**
+	 * Runs on a throwaway data dir like every other test. The owner's real config.properties (which may hold the API
+	 * key) is only read, by copying it into the temp dir; nothing in the real data dir is created or written.
+	 */
+	@DynamicPropertySource
+	static void dataDir(DynamicPropertyRegistry registry) throws IOException {
+		Path tmp = Files.createTempDirectory("placement-tracker-eval-");
+		Path realConfig = DataDir.defaultRoot().resolve("config.properties");
+		if (Files.isRegularFile(realConfig)) {
+			Files.copy(realConfig, tmp.resolve("config.properties"), StandardCopyOption.REPLACE_EXISTING);
+		}
+		registry.add("tracker.data-dir", tmp::toString);
+	}
 
 	@Test
 	void classifierMeetsRecallAndStageThresholds() throws Exception {
