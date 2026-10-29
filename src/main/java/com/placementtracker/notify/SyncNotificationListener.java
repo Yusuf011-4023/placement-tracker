@@ -49,16 +49,18 @@ public class SyncNotificationListener {
 
 	private void notifyActions(SyncCompletedEvent event) {
 		List<String> lines = new ArrayList<>();
+		List<String> keys = new ArrayList<>();
 		for (Long id : event.report().newActionIds()) {
 			ApplicationAction a = actions.find(id).orElse(null);
 			if (a == null || a.status() != ApplicationAction.Status.OPEN) {
 				continue;
 			}
-			if (!notified.markIfNew("action:" + a.id() + ":new")) {
+			if (notified.seen("action:" + a.id() + ":new")) {
 				continue;
 			}
 			String company = applications.find(a.applicationId()).map(x -> x.company()).orElse("Unknown");
 			lines.add(company + ": " + a.description());
+			keys.add("action:" + a.id() + ":new");
 		}
 		if (lines.isEmpty()) {
 			return;
@@ -67,6 +69,8 @@ public class SyncNotificationListener {
 		if (lines.size() > MAX_LISTED) {
 			body += " +" + (lines.size() - MAX_LISTED) + " more";
 		}
-		notifier.notify("New to-dos", body);
+		if (notifier.notify("New to-dos", body)) {
+			keys.forEach(notified::markIfNew);
+		}
 	}
 }

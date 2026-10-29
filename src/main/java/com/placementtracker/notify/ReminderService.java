@@ -45,6 +45,7 @@ public class ReminderService {
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
+	@org.springframework.core.annotation.Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
 	void onReady() {
 		run();
 	}
@@ -71,22 +72,16 @@ public class ReminderService {
 		boolean oneDay = left.compareTo(Duration.ofHours(24)) <= 0;
 		String key3 = "action:" + a.id() + ":3d";
 		String key1 = "action:" + a.id() + ":1d";
-		String title;
-		if (oneDay) {
-			boolean first = notified.markIfNew(key1);
-			notified.markIfNew(key3);
-			if (!first) {
-				return;
-			}
-			title = "Due tomorrow";
-		}
-		else {
-			if (!notified.markIfNew(key3)) {
-				return;
-			}
-			title = "Due in 3 days";
+		String title = oneDay ? "Due tomorrow" : "Due in 3 days";
+		if (notified.seen(oneDay ? key1 : key3)) {
+			return;
 		}
 		String company = applications.find(a.applicationId()).map(x -> x.company()).orElse("Unknown");
-		notifier.notify(title, company + ": " + a.description() + " — due " + WHEN.format(a.dueAt()));
+		if (notifier.notify(title, company + ": " + a.description() + " — due " + WHEN.format(a.dueAt()))) {
+			notified.markIfNew(key3);
+			if (oneDay) {
+				notified.markIfNew(key1);
+			}
+		}
 	}
 }

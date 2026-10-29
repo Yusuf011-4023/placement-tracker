@@ -9,7 +9,8 @@ public class LoggingNotifier implements Notifier {
 	private static final Logger log = LoggerFactory.getLogger(LoggingNotifier.class);
 
 	@Override
-	public void notify(String title, String message) {
+	public boolean notify(String title, String message) {
 		log.info("Notification: {} - {}", title, message);
+		return true;
 	}
 }

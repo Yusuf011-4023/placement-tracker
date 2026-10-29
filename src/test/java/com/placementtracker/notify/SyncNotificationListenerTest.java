@@ -72,4 +72,20 @@ class SyncNotificationListenerTest extends NotifyTestBase {
 		assertThat(notifier.sent).hasSize(1);
 		assertThat(notifier.sent.get(0)[1]).isEqualTo("Northwind Bank: Open one");
 	}
+
+	@Test
+	void newActionsNotMarkedWhenBatchSendFails() {
+		long n = app("Northwind Bank");
+		long x = action(n, "One", null);
+		long y = action(n, "Two", null);
+		notifier.refuse = true;
+		listener().onSync(event(0, List.of(x, y)));
+		assertThat(log.seen("action:" + x + ":new")).isFalse();
+		assertThat(log.seen("action:" + y + ":new")).isFalse();
+		notifier.sent.clear();
+		notifier.refuse = false;
+		listener().onSync(event(0, List.of(x, y)));
+		assertThat(notifier.sent).hasSize(1);
+		assertThat(log.seen("action:" + x + ":new")).isTrue();
+	}
 }

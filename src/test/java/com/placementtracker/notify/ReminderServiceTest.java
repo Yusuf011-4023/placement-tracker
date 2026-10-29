@@ -74,4 +74,19 @@ class ReminderServiceTest extends NotifyTestBase {
 		service().run();
 		assertThat(notifier.sent).isEmpty();
 	}
+
+	@Test
+	void reminderNotMarkedWhenNotifierCannotShow() {
+		long a = app("Northwind Bank");
+		action(a, "Complete online test", NOW_ODT.plusHours(70));
+		ReminderService s = service();
+		notifier.refuse = true;
+		s.run();
+		notifier.sent.clear();
+		notifier.refuse = false;
+		s.run();
+		assertThat(notifier.sent).hasSize(1);
+		s.run();
+		assertThat(notifier.sent).hasSize(1);
+	}
 }

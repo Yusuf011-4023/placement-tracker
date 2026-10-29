@@ -52,6 +52,7 @@ abstract class NotifyTestBase {
 			jdbc.update("DELETE FROM " + t);
 		}
 		notifier.sent.clear();
+		notifier.refuse = false;
 	}
 
 	long app(String company) {
@@ -64,10 +65,12 @@ abstract class NotifyTestBase {
 
 	static class FakeNotifier implements Notifier {
 		final List<String[]> sent = new ArrayList<>();
+		boolean refuse;
 
 		@Override
-		public void notify(String title, String message) {
+		public boolean notify(String title, String message) {
 			sent.add(new String[] { title, message });
+			return !refuse;
 		}
 	}
 }

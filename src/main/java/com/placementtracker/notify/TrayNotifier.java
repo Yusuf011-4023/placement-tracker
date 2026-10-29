@@ -18,17 +18,19 @@ public class TrayNotifier implements Notifier {
 	}
 
 	@Override
-	public void notify(String title, String message) {
+	public boolean notify(String title, String message) {
 		TrayIcon i = icon;
 		if (i == null) {
 			log.info("Notification (no tray icon yet): {} - {}", title, message);
-			return;
+			return false;
 		}
 		try {
 			i.displayMessage(title, message, MessageType.INFO);
+			return true;
 		}
 		catch (RuntimeException e) {
 			log.warn("Could not show notification: {}", e.getMessage());
+			return false;
 		}
 	}
 }

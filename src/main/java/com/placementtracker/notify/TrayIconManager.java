@@ -42,6 +42,7 @@ public class TrayIconManager {
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
+	@org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 	public void install() {
 		if (GraphicsEnvironment.isHeadless() || !SystemTray.isSupported()) {
 			log.warn("System tray not available; continuing without a tray icon");
