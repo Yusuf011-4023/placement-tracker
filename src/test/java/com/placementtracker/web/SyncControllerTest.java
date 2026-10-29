@@ -1,7 +1,9 @@
 package com.placementtracker.web;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +27,21 @@ class SyncControllerTest extends ApiTestBase {
 				.andExpect(jsonPath("$", hasSize(1)))
 				.andExpect(jsonPath("$[0].account", is("GMAIL")))
 				.andExpect(jsonPath("$[0].connected").isBoolean());
+	}
+
+	@Test
+	void connectWithoutClientSecretIs409() throws Exception {
+		mvc.perform(own(post("/api/accounts/GMAIL/connect")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error", containsString("google-client-secret.json")))
+				.andExpect(jsonPath("$.error", containsString("client_secret_")))
+				.andExpect(jsonPath("$.error", containsString(tmp.toString())));
+	}
+
+	@Test
+	void accountsExposeLastConnectError() throws Exception {
+		mvc.perform(get("/api/accounts").header("Host", "localhost:8765"))
+				.andExpect(jsonPath("$[0].lastConnectError").value(nullValue()));
 	}
 
 	@Test

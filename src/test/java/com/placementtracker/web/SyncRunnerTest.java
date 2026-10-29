@@ -105,6 +105,40 @@ class SyncRunnerTest {
 	}
 
 	@Test
+	void connectIsSingleFlight() throws Exception {
+		SyncRunner runner = new SyncRunner(mock(SyncService.class), mock(ApplicationEventPublisher.class));
+		CountDownLatch release = new CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicInteger runs = new java.util.concurrent.atomic.AtomicInteger();
+		SyncRunner.ConnectAction slow = () -> {
+			runs.incrementAndGet();
+			release.await(5, TimeUnit.SECONDS);
+		};
+
+		assertThat(runner.connectAsync("GMAIL", slow)).isTrue();
+		assertThat(runner.connectAsync("GMAIL", slow)).isFalse();
+		release.countDown();
+		await(() -> !runner.isConnecting());
+		assertThat(runs.get()).isEqualTo(1);
+		assertThat(runner.connectAsync("GMAIL", () -> { })).isTrue();
+	}
+
+	@Test
+	void failedConnectKeepsLastErrorUntilNextAttempt() throws Exception {
+		SyncRunner runner = new SyncRunner(mock(SyncService.class), mock(ApplicationEventPublisher.class));
+
+		runner.connectAsync("GMAIL", () -> {
+			throw new IllegalStateException("access_denied");
+		});
+		await(() -> runner.lastConnectError("GMAIL") != null);
+		assertThat(runner.lastConnectError("GMAIL")).contains("access_denied");
+
+		CountDownLatch release = new CountDownLatch(1);
+		runner.connectAsync("GMAIL", () -> release.await(5, TimeUnit.SECONDS));
+		assertThat(runner.lastConnectError("GMAIL")).isNull(); // cleared as soon as a new attempt starts
+		release.countDown();
+	}
+
+	@Test
 	void manualSyncAlsoPublishesEvent() throws Exception {
 		SyncService sync = mock(SyncService.class);
 		SyncReport report = report();

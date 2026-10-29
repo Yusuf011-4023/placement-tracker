@@ -54,7 +54,7 @@ class AccountViewsTest {
 		when(state.get(MailAccount.GMAIL))
 				.thenReturn(new SyncState(MailAccount.GMAIL, null, null, status, "invalid_grant"));
 		StaticListableBeanFactory beans = new StaticListableBeanFactory(Map.of("gmail", new TokenOnDisk()));
-		return new AccountViews(beans.getBeanProvider(MailSource.class), state);
+		return new AccountViews(beans.getBeanProvider(MailSource.class), state, mock(SyncRunner.class));
 	}
 
 	@Test

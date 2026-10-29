@@ -6,12 +6,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +68,43 @@ public class GmailMailSource implements MailSource {
 
 	private volatile HttpTransport transport;
 
+	/** How long the browser sign-in may take before the local callback server gives up. */
+	static final Duration SIGN_IN_TIMEOUT = Duration.ofMinutes(5);
+
 	@Autowired
 	public GmailMailSource(DataDir dataDir) {
-		this(dataDir, flow -> new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize(USER));
+		this(dataDir, GmailMailSource::browserSignIn);
+	}
+
+	/**
+	 * Opens the browser sign-in. The receiver otherwise waits for Google's callback forever, which would leave a
+	 * single-flight connect stuck after the owner closes the tab; so it is stopped after {@link #SIGN_IN_TIMEOUT}.
+	 */
+	private static void browserSignIn(GoogleAuthorizationCodeFlow flow) throws IOException {
+		LocalServerReceiver receiver = new LocalServerReceiver();
+		AtomicBoolean timedOut = new AtomicBoolean();
+		CompletableFuture<Void> timer = CompletableFuture.runAsync(() -> {
+			timedOut.set(true);
+			try {
+				receiver.stop();
+			}
+			catch (IOException e) {
+				log.debug("Stopping the sign-in receiver failed", e);
+			}
+		}, CompletableFuture.delayedExecutor(SIGN_IN_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS));
+		try {
+			new AuthorizationCodeInstalledApp(flow, receiver).authorize(USER);
+		}
+		catch (IOException | RuntimeException e) {
+			if (timedOut.get()) {
+				throw new IOException("the Google sign-in was not finished within " + SIGN_IN_TIMEOUT.toMinutes()
+						+ " minutes; press Connect to try again", e);
+			}
+			throw e;
+		}
+		finally {
+			timer.cancel(false);
+		}
 	}
 
 	/** Test seam: {@code authorizer} replaces the browser sign-in. */
@@ -98,6 +136,15 @@ public class GmailMailSource implements MailSource {
 		catch (IOException | RuntimeException e) {
 			return false;
 		}
+	}
+
+	@Override
+	public Optional<String> setupProblem() {
+		if (Files.isRegularFile(secretFile)) {
+			return Optional.empty();
+		}
+		return Optional.of("Put your Google client secret at " + secretFile + ". Google's download is named "
+				+ "client_secret_<something>.json: rename it to google-client-secret.json (see README).");
 	}
 
 	@Override

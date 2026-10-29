@@ -16,7 +16,9 @@ public final class Dtos {
 
 	public enum Urgency { OVERDUE, URGENT, SOON, LATER }
 
-	public record Account(String account, boolean connected, String status, Instant lastSuccessAt, String error) {
+	/** {@code lastConnectError}: why the last Connect press failed (null while one runs or after success). */
+	public record Account(String account, boolean connected, String status, Instant lastSuccessAt, String error,
+			String lastConnectError) {
 	}
 
 	public record ChartSlice(String stage, int count) {

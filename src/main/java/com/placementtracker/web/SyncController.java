@@ -46,10 +46,14 @@ public class SyncController {
 		if (source == null) {
 			throw new NotFoundException("No such account: " + account);
 		}
-		runner.connectAsync(source.account().name(), () -> {
+		source.setupProblem().ifPresent(problem -> {
+			throw new IllegalStateException(problem); // 409, shown on the setup page
+		});
+		// Single-flight: a second press while the sign-in is open does not start another one.
+		boolean started = runner.connectAsync(source.account().name(), () -> {
 			source.connect();
 			syncState.clearNeedsReconnect(source.account());
 		});
-		return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of("connecting", true));
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of("connecting", true, "started", started));
 	}
 }

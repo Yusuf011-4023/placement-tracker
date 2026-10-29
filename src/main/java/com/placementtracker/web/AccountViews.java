@@ -17,10 +17,12 @@ public class AccountViews {
 
 	private final ObjectProvider<MailSource> sources;
 	private final SyncStateRepository syncState;
+	private final SyncRunner runner;
 
-	public AccountViews(ObjectProvider<MailSource> sources, SyncStateRepository syncState) {
+	public AccountViews(ObjectProvider<MailSource> sources, SyncStateRepository syncState, SyncRunner runner) {
 		this.sources = sources;
 		this.syncState = syncState;
+		this.runner = runner;
 	}
 
 	public List<Account> list() {
@@ -28,7 +30,8 @@ public class AccountViews {
 			SyncState st = syncState.get(s.account());
 			// A token on disk that Google has rejected is not a connection: the owner must reconnect.
 			boolean connected = s.isConnected() && st.status() != SyncStatus.NEEDS_RECONNECT;
-			return new Account(s.account().name(), connected, st.status().name(), st.lastSuccessAt(), st.lastError());
+			return new Account(s.account().name(), connected, st.status().name(), st.lastSuccessAt(), st.lastError(),
+					runner.lastConnectError(s.account().name()));
 		}).toList();
 	}
 

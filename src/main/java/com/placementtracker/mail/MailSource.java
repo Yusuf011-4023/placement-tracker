@@ -12,6 +12,11 @@ public interface MailSource {
 
 	void connect() throws MailAuthException;
 
+	/** What the owner must do before {@link #connect()} can work (e.g. a missing file), or empty when ready. */
+	default Optional<String> setupProblem() {
+		return Optional.empty();
+	}
+
 	/** Results are ordered by {@code receivedAt} ascending. */
 	List<MailMessage> fetchSince(Instant since) throws MailAuthException, MailSourceException;
 
