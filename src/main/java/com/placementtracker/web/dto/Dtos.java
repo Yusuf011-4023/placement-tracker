@@ -34,8 +34,13 @@ public final class Dtos {
 			boolean hasOpenAction, Urgency urgency) {
 	}
 
-	public record Dashboard(List<Account> accounts, boolean aiConfigured, boolean syncing, List<ChartSlice> chart,
-			List<NeedsAction> needsAction, List<PleaseCheck> pleaseCheck, Map<String, List<Card>> board) {
+	/** {@code waiting}: emails PENDING or FAILED. The UI warns when lastErrorAt is after lastSuccessAt. */
+	public record Ai(boolean configured, String lastError, Instant lastErrorAt, Instant lastSuccessAt, int waiting) {
+	}
+
+	public record Dashboard(List<Account> accounts, boolean aiConfigured, Ai ai, boolean syncing,
+			List<ChartSlice> chart, List<NeedsAction> needsAction, List<PleaseCheck> pleaseCheck,
+			Map<String, List<Card>> board) {
 	}
 
 	public record ActionView(long id, String description, OffsetDateTime dueAt, String status, String stage) {

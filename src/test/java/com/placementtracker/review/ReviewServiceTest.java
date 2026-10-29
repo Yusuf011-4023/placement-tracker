@@ -201,6 +201,29 @@ class ReviewServiceTest {
 		assertThat(reviews.findOpen()).isEmpty();
 	}
 
+	@Test
+	void retryResetsEmailToPending() {
+		EmailRecord e = email("t1");
+		jdbc.update("UPDATE emails SET status = 'REVIEW', attempts = 3, last_error = 'bad json' WHERE id = ?", e.id());
+		long id = reviews.open(e.id(), null, ReviewReason.AI_FAILED, "{}");
+
+		service.retry(id);
+
+		EmailRecord after = emails.find(e.id()).orElseThrow();
+		assertThat(after.status()).isEqualTo(EmailStatus.PENDING);
+		assertThat(after.attempts()).isZero();
+		assertThat(reviews.findOpen()).isEmpty();
+	}
+
+	@Test
+	void retryOnlyForAiFailedItems() {
+		EmailRecord e = email("t1");
+		long id = reviews.open(e.id(), null, ReviewReason.LOW_CONFIDENCE, "{}");
+
+		assertThatThrownBy(() -> service.retry(id)).isInstanceOf(IllegalStateException.class);
+		assertThat(reviews.findOpen()).hasSize(1);
+	}
+
 	private EmailRecord email(String thread) {
 		String mid = "msg-" + (++seq);
 		MailMessage m = new MailMessage(MailAccount.GMAIL, mid, thread, null, "hr@acme.com", "Subject",

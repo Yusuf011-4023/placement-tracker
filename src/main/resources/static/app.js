@@ -101,6 +101,12 @@ function renderBanners() {
       el("b", { text: "AI key missing" }),
       " — emails are queued and will be read once you add your Anthropic API key (see README)"));
   }
+  if (aiFailing(dashboard.ai)) {
+    const n = dashboard.ai.waiting;
+    box.append(el("div", { class: "banner" },
+      el("b", { text: "AI unavailable: " }),
+      `${dashboard.ai.lastError} · ${n} ${n === 1 ? "email" : "emails"} waiting`));
+  }
   for (const account of dashboard.accounts) {
     if (account.status === "NEEDS_RECONNECT") {
       box.append(el("div", { class: "banner" },
@@ -110,6 +116,12 @@ function renderBanners() {
       box.append(el("div", { class: "banner", text: "Last check failed: " + account.error }));
     }
   }
+}
+
+/** The AI's latest call failed (and nothing has succeeded since) while emails are waiting for it. */
+function aiFailing(ai) {
+  if (!ai || !ai.configured || !ai.lastError || !ai.lastErrorAt || ai.waiting <= 0) return false;
+  return !ai.lastSuccessAt || new Date(ai.lastErrorAt) > new Date(ai.lastSuccessAt);
 }
 
 // ---------- donut chart ----------
@@ -289,6 +301,10 @@ function checkItem(item) {
       el("button", { class: "btn small", type: "button", text: "Confirm", disabled: c === null,
         onclick: () => reviewAction(item.reviewId, "confirm") }),
       el("button", { class: "btn small", type: "button", text: "Edit & confirm", onclick: () => editAndConfirm(item, c) }),
+      item.reason === "AI_FAILED"
+        ? el("button", { class: "btn small", type: "button", text: "Try again",
+          title: "Ask the AI to read this email again", onclick: () => reviewAction(item.reviewId, "retry") })
+        : null,
       el("button", { class: "btn small", type: "button", text: "Not a placement email",
         onclick: () => reviewAction(item.reviewId, "dismiss") }),
       attach));

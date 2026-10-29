@@ -64,6 +64,7 @@ class SyncServiceTest {
 	@Autowired FailureRecorder failures;
 	@Autowired ApplicationRepository apps;
 	@Autowired TrackerProperties props;
+	@Autowired com.placementtracker.classify.AiHealth aiHealth;
 	@Autowired JdbcTemplate jdbc;
 
 	FakeMailSource gmail;
@@ -83,7 +84,8 @@ class SyncServiceTest {
 	}
 
 	SyncService service(MailSource... sources) {
-		return new SyncService(List.of(sources), preFilter, classifier, processor, emails, state, failures, props);
+		return new SyncService(List.of(sources), preFilter, classifier, processor, emails, state, failures, aiHealth,
+				props);
 	}
 
 	@Test

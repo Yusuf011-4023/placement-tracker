@@ -17,9 +17,19 @@ public class ReviewController {
 	private static final Map<String, Object> OK = Map.of("ok", true);
 
 	private final ReviewService reviews;
+	private final SyncRunner syncRunner;
 
-	public ReviewController(ReviewService reviews) {
+	public ReviewController(ReviewService reviews, SyncRunner syncRunner) {
 		this.reviews = reviews;
+		this.syncRunner = syncRunner;
+	}
+
+	/** "Try again" on an AI_FAILED item: back to PENDING with fresh attempts, then a sync picks it up. */
+	@PostMapping("/api/review/{id}/retry")
+	public Map<String, Object> retry(@PathVariable long id) {
+		reviews.retry(id);
+		syncRunner.trigger();
+		return OK;
 	}
 
 	@PostMapping("/api/review/{id}/confirm")

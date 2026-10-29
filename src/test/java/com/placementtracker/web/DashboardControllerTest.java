@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.placementtracker.application.Stage;
+import com.placementtracker.classify.AiHealth;
 
 class DashboardControllerTest extends ApiTestBase {
 
@@ -122,5 +124,28 @@ class DashboardControllerTest extends ApiTestBase {
 				.andExpect(jsonPath("$.accounts[0].connected").isBoolean())
 				.andExpect(jsonPath("$.accounts[0].status", is("NOT_CONNECTED")))
 				.andExpect(jsonPath("$.pleaseCheck", hasSize(0)));
+	}
+
+	@Autowired
+	AiHealth aiHealth;
+
+	@Test
+	void dashboardShowsAiErrorAndWaitingCount() throws Exception {
+		for (String st : new String[] { "PENDING", "PENDING", "FAILED", "PROCESSED", "REVIEW" }) {
+			jdbc.update("INSERT INTO emails (account, message_id, status, attempts) VALUES ('GMAIL', ?, ?, 0)",
+					"m-" + java.util.UUID.randomUUID(), st);
+		}
+		aiHealth.recordFailure("Anthropic API error 402: credit balance too low");
+
+		mvc.perform(get("/api/dashboard").header("Host", "localhost:8765"))
+				.andExpect(jsonPath("$.ai.configured").isBoolean())
+				.andExpect(jsonPath("$.ai.lastError", is("Anthropic API error 402: credit balance too low")))
+				.andExpect(jsonPath("$.ai.lastErrorAt").isNotEmpty())
+				.andExpect(jsonPath("$.ai.waiting", is(3)))
+				.andExpect(jsonPath("$.aiConfigured").isBoolean());
+
+		aiHealth.recordSuccess();
+		mvc.perform(get("/api/dashboard").header("Host", "localhost:8765"))
+				.andExpect(jsonPath("$.ai.lastSuccessAt").isNotEmpty());
 	}
 }

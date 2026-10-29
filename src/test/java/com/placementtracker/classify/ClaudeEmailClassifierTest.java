@@ -147,6 +147,34 @@ class ClaudeEmailClassifierTest {
 	}
 
 	@Test
+	void billingErrorIsRetryable() {
+		Headers h = Headers.builder().build();
+		// 402 (billing) and 408 (timeout) have no dedicated SDK class; the owner fixes billing, a timeout passes.
+		ClaudeEmailClassifier billing = new ClaudeEmailClassifier(p -> {
+			throw com.anthropic.errors.UnexpectedStatusCodeException.builder().statusCode(402).headers(h)
+					.body(JsonValue.from("x")).build();
+		}, props);
+		ClaudeEmailClassifier timeout = new ClaudeEmailClassifier(p -> {
+			throw com.anthropic.errors.UnexpectedStatusCodeException.builder().statusCode(408).headers(h)
+					.body(JsonValue.from("x")).build();
+		}, props);
+		ClaudeEmailClassifier retriesExhausted = new ClaudeEmailClassifier(p -> {
+			throw new com.anthropic.errors.AnthropicRetryableException("gave up");
+		}, props);
+		ClaudeEmailClassifier badRequest = new ClaudeEmailClassifier(p -> {
+			throw com.anthropic.errors.BadRequestException.builder().headers(h).body(JsonValue.from("x")).build();
+		}, props);
+		assertThatThrownBy(() -> billing.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+		assertThatThrownBy(() -> timeout.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+		assertThatThrownBy(() -> retriesExhausted.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+		assertThatThrownBy(() -> badRequest.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isFalse());
+	}
+
+	@Test
 	void authErrorIsRetryable() {
 		Headers h = Headers.builder().build();
 		ClaudeEmailClassifier unauthorized = new ClaudeEmailClassifier(p -> {

@@ -20,11 +20,13 @@ import com.placementtracker.application.Application;
 import com.placementtracker.application.ApplicationAction;
 import com.placementtracker.application.ApplicationRepository;
 import com.placementtracker.application.Stage;
+import com.placementtracker.classify.AiHealth;
 import com.placementtracker.classify.EmailClassifier;
 import com.placementtracker.mail.EmailRecord;
 import com.placementtracker.mail.EmailRepository;
 import com.placementtracker.review.ReviewItem;
 import com.placementtracker.review.ReviewRepository;
+import com.placementtracker.web.dto.Dtos.Ai;
 import com.placementtracker.web.dto.Dtos.Card;
 import com.placementtracker.web.dto.Dtos.ChartSlice;
 import com.placementtracker.web.dto.Dtos.Dashboard;
@@ -48,19 +50,21 @@ public class DashboardController {
 	private final ReviewRepository reviews;
 	private final EmailRepository emails;
 	private final EmailClassifier classifier;
+	private final AiHealth aiHealth;
 	private final AccountViews accounts;
 	private final SyncRunner syncRunner;
 	private final Clock clock;
 	private final ObjectMapper json;
 
 	public DashboardController(ApplicationRepository apps, ActionRepository actions, ReviewRepository reviews,
-			EmailRepository emails, EmailClassifier classifier, AccountViews accounts, SyncRunner syncRunner,
-			Clock clock, ObjectMapper json) {
+			EmailRepository emails, EmailClassifier classifier, AiHealth aiHealth, AccountViews accounts,
+			SyncRunner syncRunner, Clock clock, ObjectMapper json) {
 		this.apps = apps;
 		this.actions = actions;
 		this.reviews = reviews;
 		this.emails = emails;
 		this.classifier = classifier;
+		this.aiHealth = aiHealth;
 		this.accounts = accounts;
 		this.syncRunner = syncRunner;
 		this.clock = clock;
@@ -75,7 +79,11 @@ public class DashboardController {
 		all.forEach(a -> byId.put(a.id(), a));
 		List<ApplicationAction> open = actions.findOpen();
 
-		return new Dashboard(accounts.list(), classifier.isConfigured(), syncRunner.isSyncing(), chart(all),
+		boolean aiConfigured = classifier.isConfigured();
+		AiHealth.Snapshot health = aiHealth.snapshot();
+		Ai ai = new Ai(aiConfigured, health.lastError(), health.lastErrorAt(), health.lastSuccessAt(),
+				emails.countWaiting());
+		return new Dashboard(accounts.list(), aiConfigured, ai, syncRunner.isSyncing(), chart(all),
 				needsAction(open, byId, now), pleaseCheck(), board(all, open, now));
 	}
 

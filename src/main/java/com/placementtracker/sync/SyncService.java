@@ -18,6 +18,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.placementtracker.classify.AiHealth;
 import com.placementtracker.classify.Classification;
 import com.placementtracker.classify.ClassificationException;
 import com.placementtracker.classify.EmailClassifier;
@@ -55,19 +56,21 @@ public class SyncService {
 	private final EmailRepository emails;
 	private final SyncStateRepository syncState;
 	private final FailureRecorder failures;
+	private final AiHealth aiHealth;
 	private final TrackerProperties props;
 
 	/** Spring constructor: tolerates there being no MailSource beans yet. */
 	@Autowired
 	public SyncService(ObjectProvider<MailSource> sources, PreFilter preFilter, EmailClassifier classifier,
 			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, FailureRecorder failures,
-			TrackerProperties props) {
-		this(sources.orderedStream().toList(), preFilter, classifier, processor, emails, syncState, failures, props);
+			AiHealth aiHealth, TrackerProperties props) {
+		this(sources.orderedStream().toList(), preFilter, classifier, processor, emails, syncState, failures,
+				aiHealth, props);
 	}
 
 	public SyncService(List<MailSource> sources, PreFilter preFilter, EmailClassifier classifier,
 			EmailProcessor processor, EmailRepository emails, SyncStateRepository syncState, FailureRecorder failures,
-			TrackerProperties props) {
+			AiHealth aiHealth, TrackerProperties props) {
 		this.sources = List.copyOf(sources);
 		this.preFilter = preFilter;
 		this.classifier = classifier;
@@ -75,6 +78,7 @@ public class SyncService {
 		this.emails = emails;
 		this.syncState = syncState;
 		this.failures = failures;
+		this.aiHealth = aiHealth;
 		this.props = props;
 	}
 
@@ -245,8 +249,14 @@ public class SyncService {
 			try {
 				c = classifier.classify(m);
 				run.consecutiveFailures = 0;
+				aiHealth.recordSuccess();
 			}
-			catch (ClassificationException | RuntimeException e) {
+			catch (ClassificationException e) {
+				run.consecutiveFailures++;
+				aiHealth.recordFailure(e.getMessage());
+				throw e;
+			}
+			catch (RuntimeException e) {
 				run.consecutiveFailures++;
 				throw e;
 			}

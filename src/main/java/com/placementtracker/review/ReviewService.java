@@ -85,6 +85,17 @@ public class ReviewService {
 		reviews.resolve(reviewId);
 	}
 
+	/** Puts an AI_FAILED email back in the queue with a fresh set of attempts, and resolves the item. */
+	@Transactional
+	public void retry(long reviewId) {
+		ReviewItem item = openItem(reviewId);
+		if (item.reason() != ReviewReason.AI_FAILED) {
+			throw new IllegalStateException("only an item the AI could not read can be tried again");
+		}
+		emails.resetForRetry(emailOf(item).id());
+		reviews.resolve(reviewId);
+	}
+
 	private ReviewItem openItem(long id) {
 		ReviewItem item = reviews.find(id)
 				.orElseThrow(() -> new IllegalArgumentException("No such review item: " + id));

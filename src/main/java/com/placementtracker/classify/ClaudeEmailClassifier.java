@@ -11,7 +11,11 @@ import org.springframework.stereotype.Component;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.errors.AnthropicException;
 import com.anthropic.errors.AnthropicIoException;
+import com.anthropic.errors.AnthropicRetryableException;
 import com.anthropic.errors.AnthropicServiceException;
+import com.anthropic.errors.InternalServerException;
+import com.anthropic.errors.RateLimitException;
+import com.anthropic.models.ErrorType;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.StopReason;
 import com.anthropic.models.messages.StructuredMessage;
@@ -81,12 +85,21 @@ public class ClaudeEmailClassifier implements EmailClassifier {
 			// A bad or revoked key: the owner fixes it by updating the key, so keep the email waiting.
 			throw new ClassificationException("Anthropic API key rejected: " + e.getMessage(), e, true);
 		}
-		catch (AnthropicServiceException e) {
-			int status = e.statusCode();
-			boolean retryable = status == 429 || status >= 500;
-			throw new ClassificationException("Anthropic API error " + status + ": " + e.getMessage(), e, retryable);
+		catch (RateLimitException | InternalServerException e) {
+			throw new ClassificationException(
+					"Anthropic API error " + e.statusCode() + ": " + e.getMessage(), e, true);
 		}
-		catch (AnthropicIoException e) {
+		catch (AnthropicServiceException e) {
+			// 402 billing_error (the owner tops up credit) and 408 timeout have no dedicated SDK class. Neither
+			// says anything about the email, so they must not use up its attempts.
+			int status = e.statusCode();
+			boolean billing = status == 402
+					|| e.errorType().map(t -> ErrorType.BILLING_ERROR.equals(t)).orElse(false);
+			boolean retryable = billing || status == 408 || status == 429 || status >= 500;
+			String what = billing ? "Anthropic billing problem (check your credit balance)" : "Anthropic API error";
+			throw new ClassificationException(what + " " + status + ": " + e.getMessage(), e, retryable);
+		}
+		catch (AnthropicIoException | AnthropicRetryableException e) {
 			throw new ClassificationException("Could not reach the Anthropic API: " + e.getMessage(), e, true);
 		}
 		catch (AnthropicException e) {

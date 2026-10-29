@@ -95,6 +95,17 @@ public class EmailRepository {
 	}
 
 	/** Emails never classified (no API key yet, or a crash mid-run). */
+	/** Back to PENDING with a fresh set of attempts (the owner pressed "Try again"). */
+	public void resetForRetry(long id) {
+		jdbc.sql("UPDATE emails SET status = 'PENDING', attempts = 0 WHERE id = ?").param(id).update();
+	}
+
+	/** Emails still waiting for the classifier: PENDING plus FAILED (retried on every sync). */
+	public int countWaiting() {
+		return jdbc.sql("SELECT COUNT(*) FROM emails WHERE status IN ('PENDING', 'FAILED')").query(Integer.class)
+				.single();
+	}
+
 	public List<EmailRecord> findPending() {
 		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE status = 'PENDING' ORDER BY id")
 				.query(this::map).list();
