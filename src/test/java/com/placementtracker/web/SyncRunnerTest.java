@@ -103,4 +103,17 @@ class SyncRunnerTest {
 		Thread.sleep(150);
 		verify(sync, never()).syncAll();
 	}
+
+	@Test
+	void manualSyncAlsoPublishesEvent() throws Exception {
+		SyncService sync = mock(SyncService.class);
+		SyncReport report = report();
+		when(sync.syncAll()).thenReturn(report);
+		ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+		SyncRunner runner = new SyncRunner(sync, events);
+
+		runner.trigger();
+		awaitIdle(runner);
+		verify(events).publishEvent(new com.placementtracker.sync.SyncCompletedEvent(report));
+	}
 }
