@@ -1,0 +1,3 @@
+{"id":"m2","threadId":"t2","labelIds":["INBOX","CATEGORY_SOCIAL","CATEGORY_UPDATES","STARRED"],"internalDate":"1760000001000",
+ "payload":{"mimeType":"multipart/alternative","headers":[{"name":"From","value":"hr@x.com"},{"name":"Subject","value":"Hi"},{"name":"message-id","value":"<m2@x.com>"}],
+  "parts":[{"mimeType":"text/html","body":{"data":"PGh0bWw-PGJvZHk-PHA-SGVsbG88L3A-PHA-SFRNTCBvbmx5PGJyPmxpbmUgdHdvPC9wPjwvYm9keT48L2h0bWw-"}}]}}
