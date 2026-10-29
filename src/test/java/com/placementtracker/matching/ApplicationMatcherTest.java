@@ -56,9 +56,22 @@ class ApplicationMatcherTest {
 		jdbc.update("INSERT INTO emails (account, message_id, thread_id, application_id, status, attempts) "
 				+ "VALUES ('GMAIL','m0','t1',?, 'PROCESSED', 0)", linked);
 
-		MatchResult r = matcher.match(cls("Completely Different Co", "Tester", Stage.INTERVIEW), mail("t1"));
+		MatchResult r = matcher.match(cls("Acme Ltd", "Tester", Stage.INTERVIEW), mail("t1"));
 
 		assertThat(r).isEqualTo(new Existing(linked));
+		// no company in the classification: the thread still decides
+		assertThat(matcher.match(cls(null, "Tester", Stage.INTERVIEW), mail("t1"))).isEqualTo(new Existing(linked));
+	}
+
+	@Test
+	void threadLinkedToADifferentCompanyIsAmbiguous() {
+		long linked = apps.insert("Acme", "acme", "Analyst", Stage.APPLIED, null, null);
+		jdbc.update("INSERT INTO emails (account, message_id, thread_id, application_id, status, attempts) "
+				+ "VALUES ('GMAIL','m0','t1',?, 'PROCESSED', 0)", linked);
+
+		MatchResult r = matcher.match(cls("Completely Different Co", "Tester", Stage.INTERVIEW), mail("t1"));
+
+		assertThat(r).isEqualTo(new Ambiguous(List.of(linked)));
 	}
 
 	@Test

@@ -31,6 +31,13 @@ public class ApplicationMatcher {
 	public MatchResult match(Classification c, MailMessage m) {
 		var linked = apps.findByThreadId(m.account().name(), m.threadId());
 		if (linked.isPresent()) {
+			// A reply thread usually stays with one company, but forwarded or recruiter-agency threads can cross
+			// over: when the email clearly names a different company, let the owner decide.
+			String classified = CompanyNames.key(c.company());
+			String threadCompany = apps.find(linked.get()).map(Application::companyKey).orElse("");
+			if (!classified.isEmpty() && !threadCompany.isEmpty() && !classified.equals(threadCompany)) {
+				return new Ambiguous(List.of(linked.get()));
+			}
 			return new Existing(linked.get());
 		}
 		if (c.company() == null || c.company().isBlank()) {
