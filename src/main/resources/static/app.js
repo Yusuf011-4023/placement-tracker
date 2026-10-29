@@ -244,9 +244,10 @@ async function markDone(actionId) {
 
 /**
  * Fills a picker (Attach to…, Merge into…) with every application, including not-submitted and closed ones,
- * which the board leaves out. Fetched fresh each time, and again when the picker gets focus.
+ * which the board leaves out. Fetched fresh each time, and again when the picker gets focus. Applications in
+ * firstIds (the likely matches) are listed first, under their own heading.
  */
-async function fillApplicationPicker(select, placeholder, excludeId) {
+async function fillApplicationPicker(select, placeholder, excludeId, firstIds = []) {
   let all;
   try {
     all = await api("GET", "/api/applications");
@@ -256,10 +257,15 @@ async function fillApplicationPicker(select, placeholder, excludeId) {
   const chosen = select.value;
   clear(select);
   select.append(el("option", { value: "", text: placeholder }));
-  for (const a of all) {
-    if (a.id === excludeId) continue;
-    const label = `${a.company} (${a.role || "no role"})${a.stage === "APPLIED" ? "" : " · " + stageLabel(a.stage)}`;
-    select.append(el("option", { value: a.id, text: label, selected: String(a.id) === chosen }));
+  const option = (a) => el("option", { value: a.id, selected: String(a.id) === chosen,
+    text: `${a.company} (${a.role || "no role"})${a.stage === "APPLIED" ? "" : " · " + stageLabel(a.stage)}` });
+  const candidates = all.filter((a) => a.id !== excludeId && firstIds.includes(a.id));
+  const rest = all.filter((a) => a.id !== excludeId && !firstIds.includes(a.id));
+  if (candidates.length) {
+    select.append(el("optgroup", { label: "Likely matches" }, ...candidates.map(option)));
+    select.append(el("optgroup", { label: "All applications" }, ...rest.map(option)));
+  } else {
+    for (const a of rest) select.append(option(a));
   }
 }
 
@@ -280,25 +286,42 @@ function classificationOf(item) {
   return s.classification || (s.stage !== undefined ? s : null);
 }
 
+/** What confirming would do, in words: "Acme: Online test → Interview" when an application is matched. */
+function suggestionText(item, c) {
+  if (!c) return "No suggestion available. Use Edit & confirm, or Attach it to an application.";
+  if (item.applicationId && item.applicationCompany) {
+    const current = stageLabel(item.applicationStage);
+    return c.stage && c.stage !== item.applicationStage
+      ? `Suggested: ${item.applicationCompany}: ${current} → ${stageLabel(c.stage)}`
+      : `Suggested: ${item.applicationCompany}: stays at ${current}`;
+  }
+  return `Suggested: new application ${c.company || "(unknown company)"}${c.role ? " (" + c.role + ")" : ""}`
+    + ` at ${stageLabel(c.stage)}`;
+}
+
 function checkItem(item) {
   const c = classificationOf(item);
-  const suggestion = c
-    ? `Suggested: ${c.company || "unknown company"}${c.role ? " (" + c.role + ")" : ""} → ${stageLabel(c.stage)}`
-    : "No suggestion available. Use Edit & confirm to fill it in.";
+  const candidates = item.candidateIds || [];
   const attach = el("select", { "aria-label": "Attach to an application", onchange: (e) => {
     const id = Number(e.target.value);
     if (id) reviewAction(item.reviewId, "attach", { applicationId: id });
   } }, el("option", { value: "", text: "Attach to…" }));
-  fillApplicationPicker(attach, "Attach to…");
-  attach.addEventListener("focus", () => fillApplicationPicker(attach, "Attach to…"));
+  fillApplicationPicker(attach, "Attach to…", undefined, candidates);
+  attach.addEventListener("focus", () => fillApplicationPicker(attach, "Attach to…", undefined, candidates));
+  // Only https links are rendered as links, so a hostile web link can never be a javascript: URL
+  const openEmail = item.webLink && item.webLink.startsWith("https://")
+    ? el("a", { href: item.webLink, target: "_blank", rel: "noopener noreferrer", text: "Open email" }) : null;
 
   return el("div", { class: "check-item" },
     el("div", {}, el("span", { class: "reason", text: REASON_LABELS[item.reason] || item.reason }),
       el("b", { text: item.subject || "(no subject)" })),
-    el("div", { class: "meta", text: [item.from, item.receivedAt ? new Date(item.receivedAt).toLocaleString("en-GB") : ""].filter(Boolean).join(" · ") }),
-    el("div", { class: "suggest", text: suggestion }),
+    el("div", { class: "meta" },
+      [item.from, item.receivedAt ? new Date(item.receivedAt).toLocaleString("en-GB") : ""].filter(Boolean).join(" · "),
+      openEmail ? " · " : "", openEmail),
+    el("div", { class: "suggest", text: suggestionText(item, c) }),
     el("div", { class: "buttons" },
-      el("button", { class: "btn small", type: "button", text: "Confirm", disabled: c === null,
+      el("button", { class: "btn small", type: "button", disabled: c === null,
+        text: item.applicationId ? "Confirm" : "Add as new application",
         onclick: () => reviewAction(item.reviewId, "confirm") }),
       el("button", { class: "btn small", type: "button", text: "Edit & confirm", onclick: () => editAndConfirm(item, c) }),
       item.reason === "AI_FAILED"

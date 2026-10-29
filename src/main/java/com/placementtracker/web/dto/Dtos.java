@@ -28,8 +28,13 @@ public final class Dtos {
 			OffsetDateTime dueAt, Urgency urgency) {
 	}
 
-	public record PleaseCheck(long reviewId, String reason, Long applicationId, String subject, String from,
-			Instant receivedAt, JsonNode suggestion) {
+	/**
+	 * {@code applicationCompany}/{@code applicationStage}: the matched application, when there is one.
+	 * {@code candidateIds}: the applications an ambiguous match was torn between (empty otherwise).
+	 */
+	public record PleaseCheck(long reviewId, String reason, Long applicationId, String applicationCompany,
+			String applicationStage, List<Long> candidateIds, String subject, String from, Instant receivedAt,
+			String webLink, JsonNode suggestion) {
 	}
 
 	public record Card(long applicationId, String company, String role, String stage, int interviewRounds,

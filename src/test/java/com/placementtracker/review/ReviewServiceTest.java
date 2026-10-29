@@ -202,6 +202,44 @@ class ReviewServiceTest {
 	}
 
 	@Test
+	void attachAiFailedItemLinksWithoutStageChange() {
+		processor.process(email("t1"), mail("t1"), cls("Acme", Stage.INTERVIEW, 0.9));
+		long appId = apps.findAll().get(0).id();
+		EmailRecord e = email("t2");
+		long id = reviews.open(e.id(), null, ReviewReason.AI_FAILED, "{}");
+
+		service.attachTo(id, appId);
+
+		assertThat(apps.find(appId).orElseThrow().stage()).isEqualTo(Stage.INTERVIEW);
+		assertThat(history.forApplication(appId)).hasSize(1);
+		EmailRecord after = emails.find(e.id()).orElseThrow();
+		assertThat(after.applicationId()).isEqualTo(appId);
+		assertThat(after.status()).isEqualTo(EmailStatus.PROCESSED);
+		assertThat(reviews.findOpen()).isEmpty();
+	}
+
+	@Test
+	void attachRespectsStageLock() {
+		processor.process(email("t1"), mail("t1"), cls("Acme", Stage.ONLINE_TEST, 0.9));
+		long appId = apps.findAll().get(0).id();
+		apps.lock(appId, "stage");
+		EmailRecord e = email("t2");
+		processor.process(e, mail("t2"), cls("Other Co", Stage.INTERVIEW, 0.5, "Attend interview"));
+		ReviewItem item = reviews.findOpen().get(0);
+
+		service.attachTo(item.id(), appId);
+
+		assertThat(apps.find(appId).orElseThrow().stage()).isEqualTo(Stage.ONLINE_TEST);
+		assertThat(actions.findForApplication(appId)).isEmpty();
+		assertThat(emails.find(e.id()).orElseThrow().applicationId()).isEqualTo(appId);
+		assertThat(reviews.findOpen()).singleElement().satisfies(r -> {
+			assertThat(r.reason()).isEqualTo(ReviewReason.EDITED_FIELD);
+			assertThat(r.applicationId()).isEqualTo(appId);
+			assertThat(r.id()).isNotEqualTo(item.id());
+		});
+	}
+
+	@Test
 	void retryResetsEmailToPending() {
 		EmailRecord e = email("t1");
 		jdbc.update("UPDATE emails SET status = 'REVIEW', attempts = 3, last_error = 'bad json' WHERE id = ?", e.id());

@@ -84,7 +84,7 @@ public class DashboardController {
 		Ai ai = new Ai(aiConfigured, health.lastError(), health.lastErrorAt(), health.lastSuccessAt(),
 				emails.countWaiting());
 		return new Dashboard(accounts.list(), aiConfigured, ai, syncRunner.isSyncing(), chart(all),
-				needsAction(open, byId, now), pleaseCheck(), board(all, open, now));
+				needsAction(open, byId, now), pleaseCheck(byId), board(all, open, now));
 	}
 
 	private List<ChartSlice> chart(List<Application> all) {
@@ -109,14 +109,32 @@ public class DashboardController {
 				}).toList();
 	}
 
-	private List<PleaseCheck> pleaseCheck() {
+	private List<PleaseCheck> pleaseCheck(Map<Long, Application> byId) {
 		List<PleaseCheck> out = new ArrayList<>();
 		for (ReviewItem item : reviews.findOpen()) {
 			EmailRecord email = item.emailId() == null ? null : emails.find(item.emailId()).orElse(null);
+			Application app = item.applicationId() == null ? null : byId.get(item.applicationId());
+			JsonNode suggestion = suggestion(item.suggestionJson());
 			out.add(new PleaseCheck(item.id(), item.reason().name(), item.applicationId(),
-					email == null ? null : email.subject(), email == null ? null : email.from(),
-					email == null ? null : email.receivedAt(), suggestion(item.suggestionJson())));
+					app == null ? null : app.company(), app == null ? null : app.stage().name(),
+					candidateIds(suggestion), email == null ? null : email.subject(),
+					email == null ? null : email.from(), email == null ? null : email.receivedAt(),
+					email == null ? null : email.webLink(), suggestion));
 		}
+		return out;
+	}
+
+	private static List<Long> candidateIds(JsonNode suggestion) {
+		JsonNode ids = suggestion == null ? null : suggestion.get("candidateIds");
+		if (ids == null || !ids.isArray()) {
+			return List.of();
+		}
+		List<Long> out = new ArrayList<>();
+		ids.forEach(n -> {
+			if (n.isIntegralNumber()) {
+				out.add(n.longValue());
+			}
+		});
 		return out;
 	}
 

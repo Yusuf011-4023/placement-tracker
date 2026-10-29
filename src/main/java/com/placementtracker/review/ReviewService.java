@@ -58,20 +58,25 @@ public class ReviewService {
 	}
 
 	/**
-	 * Links the email to the chosen application and applies the suggestion through StageRules (unlocked). A
-	 * regression or closed-application change is not applied; it leaves a new open item for an explicit confirm.
+	 * Links the email to the chosen application and applies the suggestion through StageRules, honouring the
+	 * application's stage lock. A regression, closed-application change or change to a locked stage is not applied;
+	 * it leaves a new open item for an explicit confirm. With no suggestion at all (AI_FAILED) the email is just
+	 * linked and marked PROCESSED, with no stage change.
 	 */
 	@Transactional
 	public void attachTo(long reviewId, long applicationId) {
 		ReviewItem item = openItem(reviewId);
-		Classification c = suggestionOf(item);
-		if (c == null || c.stage() == null) {
-			throw new IllegalStateException("nothing to attach; edit first");
-		}
 		EmailRecord email = emailOf(item);
 		Application app = apps.find(applicationId)
 				.orElseThrow(() -> new IllegalArgumentException("No such application: " + applicationId));
-		TransitionDecision d = StageRules.decide(app.stage(), c.stage(), false);
+		Classification c = suggestionOf(item);
+		if (c == null || c.stage() == null) {
+			emails.linkApplication(email.id(), applicationId);
+			emails.setStatus(email.id(), EmailStatus.PROCESSED);
+			reviews.resolve(reviewId);
+			return;
+		}
+		TransitionDecision d = StageRules.decide(app.stage(), c.stage(), app.lockedFields().contains("stage"));
 		if (d.kind() == TransitionDecision.Kind.REVIEW) {
 			emails.linkApplication(email.id(), applicationId);
 			Map<String, Object> suggestion = new LinkedHashMap<>();
