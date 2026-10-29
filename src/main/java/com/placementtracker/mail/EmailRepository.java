@@ -44,6 +44,13 @@ public class EmailRepository {
 		return n > 0;
 	}
 
+	/** True when an email with a lower id has the same key, so exactly one of a set of duplicates survives. */
+	public boolean existsDedupeKeyBefore(String key, long id) {
+		Integer n = jdbc.sql("SELECT COUNT(*) FROM emails WHERE dedupe_key = ? AND id < ?")
+				.params(key, id).query(Integer.class).single();
+		return n > 0;
+	}
+
 	public void setStatus(long id, EmailStatus s) {
 		jdbc.sql("UPDATE emails SET status = ? WHERE id = ?").params(s.name(), id).update();
 	}
@@ -61,6 +68,12 @@ public class EmailRepository {
 	public List<EmailRecord> findRetryable(int maxAttempts) {
 		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE status = 'FAILED' AND attempts < ? ORDER BY id")
 				.param(maxAttempts).query(this::map).list();
+	}
+
+	/** Emails never classified (no API key yet, or a crash mid-run). */
+	public List<EmailRecord> findPending() {
+		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE status = 'PENDING' ORDER BY id")
+				.query(this::map).list();
 	}
 
 	public Optional<EmailRecord> find(long id) {
