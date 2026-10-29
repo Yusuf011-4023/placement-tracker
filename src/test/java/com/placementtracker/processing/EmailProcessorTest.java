@@ -341,6 +341,31 @@ class EmailProcessorTest {
 	}
 
 	@Test
+	void missingRelevanceGoesToReviewLowConfidence() {
+		EmailRecord e = email("t1");
+
+		ProcessOutcome o = processor.process(e, mail("t1"), cls(null, "Acme", "Analyst", Stage.APPLIED, 0.95));
+
+		assertThat(o).isEqualTo(ProcessOutcome.REVIEW);
+		assertThat(reviews.findOpen()).singleElement()
+				.satisfies(r -> assertThat(r.reason()).isEqualTo(ReviewReason.LOW_CONFIDENCE));
+		assertThat(apps.findAll()).isEmpty();
+	}
+
+	@Test
+	void notSubmittedToAppliedSetsAppliedOnFromEmailDate() {
+		long id = apps.insert("Acme", "acme", "Analyst", Stage.NOT_SUBMITTED, null, null);
+		linkThread(id, "t1");
+		EmailRecord e = email("t1", Instant.parse("2026-10-20T09:30:00Z"));
+
+		processor.process(e, mail("t1", e.receivedAt()), cls(Relevance.YES, "Acme", "Analyst", Stage.APPLIED, 0.9));
+
+		Application a = apps.find(id).orElseThrow();
+		assertThat(a.stage()).isEqualTo(Stage.APPLIED);
+		assertThat(a.appliedOn()).isEqualTo(java.time.LocalDate.parse("2026-10-20"));
+	}
+
+	@Test
 	void olderEmailDoesNotMoveStageBack() {
 		Classification invite = new Classification(Relevance.YES, "Acme", "Analyst", Stage.INTERVIEW,
 				List.of(new SuggestedAction("Attend interview", "2026-11-20T10:00+00:00")), 0.9, "x");

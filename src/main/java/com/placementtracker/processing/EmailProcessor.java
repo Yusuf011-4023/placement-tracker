@@ -76,7 +76,7 @@ public class EmailProcessor {
 		MatchResult match = matcher.match(c, m);
 		Long knownApp = match instanceof MatchResult.Existing e ? e.applicationId() : null;
 
-		if (c.relevance() == Relevance.UNSURE || c.stage() == null
+		if (c.relevance() != Relevance.YES || c.stage() == null
 				|| c.confidence() < props.ai().confidenceThreshold()) {
 			return review(email, knownApp, ReviewReason.LOW_CONFIDENCE, c, null);
 		}
@@ -114,7 +114,7 @@ public class EmailProcessor {
 			Application app = apps.find(applicationId)
 					.orElseThrow(() -> new IllegalArgumentException("No such application: " + applicationId));
 			emails.linkApplication(email.id(), applicationId);
-			moveToStage(app, c, email.id(), SOURCE_USER);
+			moveToStage(app, c, email, SOURCE_USER);
 		}
 		emails.setStatus(email.id(), EmailStatus.PROCESSED);
 	}
@@ -148,7 +148,7 @@ public class EmailProcessor {
 			// History catching up: an email older than the one that set the current stage never moves it (and
 			// never opens a review); it only contributes to-dos for the stage the application is in now.
 			if (c.stage() == app.stage() && !app.stage().isClosed()) {
-				moveToStage(app, c, email.id(), SOURCE_EMAIL);
+				moveToStage(app, c, email, SOURCE_EMAIL);
 			}
 			emails.setStatus(email.id(), EmailStatus.PROCESSED);
 			return ProcessOutcome.UPDATED;
@@ -157,7 +157,7 @@ public class EmailProcessor {
 		if (d.kind() == TransitionDecision.Kind.REVIEW) {
 			return review(email, appId, d.reason(), c, null);
 		}
-		moveToStage(app, c, email.id(), SOURCE_EMAIL);
+		moveToStage(app, c, email, SOURCE_EMAIL);
 		emails.setStatus(email.id(), EmailStatus.PROCESSED);
 		return ProcessOutcome.UPDATED;
 	}
@@ -171,10 +171,18 @@ public class EmailProcessor {
 				.orElse(false);
 	}
 
-	/** Moves an existing application to c.stage() (or just adds actions if unchanged), without any gating. */
-	private void moveToStage(Application app, Classification c, long emailId, String source) {
+	/**
+	 * Moves an existing application to c.stage() (or just adds actions if unchanged), without any gating. Leaving
+	 * NOT_SUBMITTED sets a missing applied date from the email's received date, as creating the application would.
+	 */
+	private void moveToStage(Application app, Classification c, EmailRecord email, String source) {
 		long appId = app.id();
+		long emailId = email.id();
 		Stage proposed = c.stage();
+		if (app.stage() == Stage.NOT_SUBMITTED && proposed != Stage.NOT_SUBMITTED && app.appliedOn() == null
+				&& email.receivedAt() != null) {
+			apps.updateFields(appId, Map.of("appliedOn", email.receivedAt().atOffset(ZoneOffset.UTC).toLocalDate()));
+		}
 		if (mover.move(app, proposed, source, emailId, false)) {
 			if (!proposed.isClosed()) {
 				addActions(appId, c, proposed, emailId, app.company());
