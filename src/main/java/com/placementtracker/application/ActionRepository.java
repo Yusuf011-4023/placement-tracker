@@ -55,6 +55,10 @@ public class ActionRepository {
 				.query(this::map).list();
 	}
 
+	public java.util.Optional<ApplicationAction> find(long id) {
+		return jdbc.sql("SELECT " + COLUMNS + " FROM actions WHERE id = ?").param(id).query(this::map).optional();
+	}
+
 	public void markDone(long id) {
 		jdbc.sql("UPDATE actions SET status = 'DONE' WHERE id = ?").param(id).update();
 	}
