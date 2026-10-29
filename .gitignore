@@ -8,3 +8,5 @@ src/test/resources/eval/private/
 .env
 .idea/
 *.iml
+logs/
+*.db-*
