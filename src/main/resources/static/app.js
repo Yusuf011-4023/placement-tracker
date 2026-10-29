@@ -366,8 +366,13 @@ function editAndConfirm(item, c) {
       confidence: 1.0,
       reason: "Confirmed by you",
     };
+    try {
+      await api("POST", `/api/review/${item.reviewId}/confirm`, edited);
+    } catch (e) {
+      return; // toast already shown; the dialog stays open so nothing typed is lost
+    }
     dialog.close();
-    await reviewAction(item.reviewId, "confirm", edited);
+    await afterAction();
   };
   dialog.showModal();
 }
