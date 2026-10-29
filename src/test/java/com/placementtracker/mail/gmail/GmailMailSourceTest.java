@@ -15,10 +15,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.google.api.client.auth.oauth2.BearerToken;
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.StoredCredential;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.LowLevelHttpRequest;
+import com.google.api.client.http.LowLevelHttpResponse;
+import com.google.api.client.testing.http.MockHttpTransport;
+import com.google.api.client.testing.http.MockLowLevelHttpRequest;
+import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.placementtracker.config.DataDir;
 import com.placementtracker.config.TrackerProperties;
 import com.placementtracker.mail.MailAuthException;
@@ -83,6 +92,35 @@ class GmailMailSourceTest {
 			assertThat(files.map(p -> p.getFileName().toString()))
 					.anyMatch(n -> n.startsWith("StoredCredential.bin.unreadable"));
 		}
+	}
+
+	@Test
+	void requestInitializerInstallsBackoff() throws Exception {
+		List<Integer> statuses = new ArrayList<>(List.of(429, 503, 200));
+		List<String> authHeaders = new ArrayList<>();
+		MockHttpTransport transport = new MockHttpTransport() {
+			@Override
+			public LowLevelHttpRequest buildRequest(String method, String url) {
+				return new MockLowLevelHttpRequest(url) {
+					@Override
+					public LowLevelHttpResponse execute() {
+						authHeaders.add(getFirstHeaderValue("Authorization"));
+						return new MockLowLevelHttpResponse().setStatusCode(statuses.remove(0)).setContent("{}");
+					}
+				};
+			}
+		};
+		Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod())
+				.setAccessToken("token-1");
+		HttpRequestInitializer init = GmailMailSource.requestInitializer(credential);
+
+		HttpRequest request = transport.createRequestFactory(init)
+				.buildGetRequest(new GenericUrl("https://gmail.googleapis.com/gmail/v1/users/me/messages"));
+		HttpResponse response = request.execute();
+
+		assertThat(response.getStatusCode()).isEqualTo(200); // 429 and 503 were retried with backoff
+		assertThat(authHeaders).hasSize(3).allMatch("Bearer token-1"::equals);
+		assertThat(request.getIOExceptionHandler()).isInstanceOf(HttpBackOffIOExceptionHandler.class);
 	}
 
 	@Test

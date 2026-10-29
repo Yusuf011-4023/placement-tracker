@@ -30,10 +30,14 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpBackOffIOExceptionHandler;
+import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
+import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.ListMessagesResponse;
@@ -243,7 +247,8 @@ public class GmailMailSource implements MailSource {
 			if (credential == null) {
 				throw new MailAuthException("Gmail is not connected - connect Gmail first", null);
 			}
-			return new Gmail.Builder(transport(), json, credential).setApplicationName(APPLICATION_NAME).build();
+			return new Gmail.Builder(transport(), json, requestInitializer(credential))
+					.setApplicationName(APPLICATION_NAME).build();
 		}
 		catch (GeneralSecurityException e) {
 			throw new MailSourceException("Cannot set up Gmail transport: " + e.getMessage(), e);
@@ -251,6 +256,24 @@ public class GmailMailSource implements MailSource {
 		catch (IOException e) {
 			throw translate(e);
 		}
+	}
+
+	/**
+	 * Signs each request with the credential (which also refreshes the token on a 401) and retries rate limiting
+	 * (429), server errors (5xx) and I/O errors with exponential backoff, so one hiccup during a large backfill does
+	 * not fail the whole listing.
+	 */
+	static HttpRequestInitializer requestInitializer(Credential credential) {
+		return request -> {
+			credential.initialize(request);
+			HttpBackOffUnsuccessfulResponseHandler backOff = new HttpBackOffUnsuccessfulResponseHandler(
+					new ExponentialBackOff()).setBackOffRequired(
+							r -> r.getStatusCode() == 429 || r.getStatusCode() / 100 == 5);
+			request.setUnsuccessfulResponseHandler((req, response, supportsRetry) ->
+					credential.handleResponse(req, response, supportsRetry)
+							|| backOff.handleResponse(req, response, supportsRetry));
+			request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(new ExponentialBackOff()));
+		};
 	}
 
 	private HttpTransport transport() throws GeneralSecurityException, IOException {
