@@ -230,8 +230,25 @@ async function markDone(actionId) {
 
 // ---------- please check ----------
 
-function allApplications() {
-  return Object.values(dashboard.board).flat().map((c) => ({ id: c.applicationId, name: `${c.company} (${c.role || "no role"})` }));
+/**
+ * Fills a picker (Attach to…, Merge into…) with every application, including not-submitted and closed ones,
+ * which the board leaves out. Fetched fresh each time, and again when the picker gets focus.
+ */
+async function fillApplicationPicker(select, placeholder, excludeId) {
+  let all;
+  try {
+    all = await api("GET", "/api/applications");
+  } catch (e) {
+    return; // toast already shown
+  }
+  const chosen = select.value;
+  clear(select);
+  select.append(el("option", { value: "", text: placeholder }));
+  for (const a of all) {
+    if (a.id === excludeId) continue;
+    const label = `${a.company} (${a.role || "no role"})${a.stage === "APPLIED" ? "" : " · " + stageLabel(a.stage)}`;
+    select.append(el("option", { value: a.id, text: label, selected: String(a.id) === chosen }));
+  }
 }
 
 function renderPleaseCheck() {
@@ -259,8 +276,9 @@ function checkItem(item) {
   const attach = el("select", { "aria-label": "Attach to an application", onchange: (e) => {
     const id = Number(e.target.value);
     if (id) reviewAction(item.reviewId, "attach", { applicationId: id });
-  } }, el("option", { value: "", text: "Attach to…" }),
-    ...allApplications().map((a) => el("option", { value: a.id, text: a.name })));
+  } }, el("option", { value: "", text: "Attach to…" }));
+  fillApplicationPicker(attach, "Attach to…");
+  attach.addEventListener("focus", () => fillApplicationPicker(attach, "Attach to…"));
 
   return el("div", { class: "check-item" },
     el("div", {}, el("span", { class: "reason", text: REASON_LABELS[item.reason] || item.reason }),
@@ -482,9 +500,9 @@ function historySection(d) {
 }
 
 function mergeSection(d) {
-  const others = allApplications().filter((a) => a.id !== d.id);
-  const target = el("select", { "aria-label": "Merge into" }, el("option", { value: "", text: "Merge into…" }),
-    ...others.map((a) => el("option", { value: a.id, text: a.name })));
+  const target = el("select", { "aria-label": "Merge into" }, el("option", { value: "", text: "Merge into…" }));
+  fillApplicationPicker(target, "Merge into…", d.id);
+  target.addEventListener("focus", () => fillApplicationPicker(target, "Merge into…", d.id));
   const merge = async () => {
     const targetId = Number(target.value);
     if (!targetId) { toast("Choose an application to merge into"); return; }

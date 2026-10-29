@@ -52,6 +52,9 @@ public final class Dtos {
 			List<HistoryEntry> history) {
 	}
 
+	public record ApplicationSummary(long id, String company, String role, String stage) {
+	}
+
 	public record NewApplication(String company, String role, String stage, LocalDate appliedOn, String notes) {
 	}
 

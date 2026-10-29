@@ -31,6 +31,23 @@ class ApplicationControllerTest extends ApiTestBase {
 	@Autowired ReviewRepository reviews;
 
 	@Test
+	void listApplicationsIncludesNotSubmittedAndClosed() throws Exception {
+		app("Zeta", Stage.REJECTED);
+		app("alpha", Stage.NOT_SUBMITTED);
+		app("Mid", Stage.APPLIED);
+
+		mvc.perform(get("/api/applications").header("Host", "localhost:8765"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(3)))
+				.andExpect(jsonPath("$[0].company", is("alpha")))
+				.andExpect(jsonPath("$[0].stage", is("NOT_SUBMITTED")))
+				.andExpect(jsonPath("$[1].company", is("Mid")))
+				.andExpect(jsonPath("$[2].stage", is("REJECTED")));
+		mvc.perform(get("/api/applications").header("Host", "evil.example"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void patchStageLocksAndRecordsUserHistory() throws Exception {
 		long a = app("Acme", Stage.APPLIED);
 		long old = action(a, "Old to-do", 10, Stage.APPLIED);

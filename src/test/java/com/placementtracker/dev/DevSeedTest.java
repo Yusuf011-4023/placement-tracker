@@ -1,9 +1,9 @@
 package com.placementtracker.dev;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
@@ -16,8 +16,10 @@ class DevSeedTest {
 
 	private final DevSeeder seeder = mock(DevSeeder.class);
 
+	private final ApplicationContext context = mock(ApplicationContext.class);
+
 	private DevCommands commands(MockEnvironment env) {
-		return new DevCommands(mock(GmailMailSource.class), mock(ApplicationContext.class), env, seeder);
+		return new DevCommands(mock(GmailMailSource.class), context, env, seeder);
 	}
 
 	@Test
@@ -40,8 +42,8 @@ class DevSeedTest {
 
 	@Test
 	void flagAloneDoesNotMakeTheAppExit() {
-		// run() would call System.exit if it treated the flag like gmail-smoke; reaching the assertion proves it did not.
+		// The exit path (gmail-smoke) calls SpringApplication.exit(context, ...), which touches the context.
 		commands(new MockEnvironment().withProperty("tracker.dev.seed", "true")).run();
-		assertThat(true).isTrue();
+		verifyNoInteractions(context);
 	}
 }

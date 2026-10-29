@@ -24,6 +24,7 @@ import com.placementtracker.mail.EmailRecord;
 import com.placementtracker.mail.EmailRepository;
 import com.placementtracker.web.dto.Dtos.ActionView;
 import com.placementtracker.web.dto.Dtos.ApplicationDetail;
+import com.placementtracker.web.dto.Dtos.ApplicationSummary;
 import com.placementtracker.web.dto.Dtos.EmailRef;
 import com.placementtracker.web.dto.Dtos.HistoryEntry;
 import com.placementtracker.web.dto.Dtos.MergeRequest;
@@ -46,6 +47,14 @@ public class ApplicationController {
 		this.history = history;
 		this.emails = emails;
 		this.edits = edits;
+	}
+
+	/** Every application (including not-submitted and closed ones), for the Attach and Merge pickers. */
+	@GetMapping("/api/applications")
+	public List<ApplicationSummary> list() {
+		return apps.findAll().stream()
+				.sorted(java.util.Comparator.comparing(Application::company, String.CASE_INSENSITIVE_ORDER))
+				.map(a -> new ApplicationSummary(a.id(), a.company(), a.role(), a.stage().name())).toList();
 	}
 
 	@GetMapping("/api/applications/{id}")
