@@ -144,6 +144,15 @@ public class EmailProcessor {
 	private ProcessOutcome update(EmailRecord email, long appId, Classification c) {
 		Application app = apps.find(appId).orElseThrow();
 		emails.linkApplication(email.id(), appId);
+		if (isStale(email, appId)) {
+			// History catching up: an email older than the one that set the current stage never moves it (and
+			// never opens a review); it only contributes to-dos for the stage the application is in now.
+			if (c.stage() == app.stage() && !app.stage().isClosed()) {
+				moveToStage(app, c, email.id(), SOURCE_EMAIL);
+			}
+			emails.setStatus(email.id(), EmailStatus.PROCESSED);
+			return ProcessOutcome.UPDATED;
+		}
 		TransitionDecision d = StageRules.decide(app.stage(), c.stage(), app.lockedFields().contains("stage"));
 		if (d.kind() == TransitionDecision.Kind.REVIEW) {
 			return review(email, appId, d.reason(), c, null);
@@ -151,6 +160,15 @@ public class EmailProcessor {
 		moveToStage(app, c, email.id(), SOURCE_EMAIL);
 		emails.setStatus(email.id(), EmailStatus.PROCESSED);
 		return ProcessOutcome.UPDATED;
+	}
+
+	/** True when the email predates the email behind the application's latest EMAIL-sourced stage change. */
+	private boolean isStale(EmailRecord email, long appId) {
+		if (email.receivedAt() == null) {
+			return false;
+		}
+		return history.latestEmailChangeReceivedAt(appId).map(latest -> email.receivedAt().isBefore(latest))
+				.orElse(false);
 	}
 
 	/** Moves an existing application to c.stage() (or just adds actions if unchanged), without any gating. */

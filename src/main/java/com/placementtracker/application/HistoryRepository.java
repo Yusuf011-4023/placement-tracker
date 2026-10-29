@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -22,6 +23,17 @@ public class HistoryRepository {
 				+ "VALUES (?, ?, ?, ?, ?, ?)")
 				.params(appId, from == null ? null : from.name(), to.name(), Instant.now().toString(), source, emailId)
 				.update();
+	}
+
+	/**
+	 * The received time of the email behind the application's latest EMAIL-sourced stage change (including its
+	 * creation), if that email is known and dated.
+	 */
+	public Optional<Instant> latestEmailChangeReceivedAt(long appId) {
+		return jdbc.sql("SELECT e.received_at FROM stage_history h JOIN emails e ON e.id = h.email_id "
+				+ "WHERE h.application_id = ? AND h.source = 'EMAIL' ORDER BY h.id DESC LIMIT 1")
+				.param(appId).query((rs, row) -> rs.getString(1)).optional()
+				.filter(v -> v != null && !v.isBlank()).map(Instant::parse);
 	}
 
 	public List<StageChange> forApplication(long appId) {

@@ -340,6 +340,43 @@ class EmailProcessorTest {
 		assertThat(actions.findForApplication(id)).hasSize(1);
 	}
 
+	@Test
+	void olderEmailDoesNotMoveStageBack() {
+		Classification invite = new Classification(Relevance.YES, "Acme", "Analyst", Stage.INTERVIEW,
+				List.of(new SuggestedAction("Attend interview", "2026-11-20T10:00+00:00")), 0.9, "x");
+		EmailRecord newer = email("t-new", Instant.parse("2026-09-10T10:00:00Z"));
+		processor.process(newer, mail("t-new", newer.receivedAt()), invite);
+		long id = apps.findAll().get(0).id();
+
+		Classification test = new Classification(Relevance.YES, "Acme", "Analyst", Stage.ONLINE_TEST,
+				List.of(new SuggestedAction("Complete the online test", "2026-09-08")), 0.9, "x");
+		EmailRecord older = email("t-old", Instant.parse("2026-09-01T10:00:00Z"));
+		ProcessOutcome o = processor.process(older, mail("t-old", older.receivedAt()), test);
+
+		assertThat(o).isEqualTo(ProcessOutcome.UPDATED);
+		assertThat(apps.find(id).orElseThrow().stage()).isEqualTo(Stage.INTERVIEW);
+		assertThat(history.forApplication(id)).hasSize(1);
+		assertThat(reviews.findOpen()).isEmpty();
+		EmailRecord after = emails.find(older.id()).orElseThrow();
+		assertThat(after.applicationId()).isEqualTo(id);
+		assertThat(after.status()).isEqualTo(EmailStatus.PROCESSED);
+		assertThat(actions.findForApplication(id)).singleElement().satisfies(x -> {
+			assertThat(x.description()).isEqualTo("Attend interview");
+			assertThat(x.status()).isEqualTo(ApplicationAction.Status.OPEN);
+		});
+
+		// an older email for the current stage still contributes its to-do
+		Classification prep = new Classification(Relevance.YES, "Acme", "Analyst", Stage.INTERVIEW,
+				List.of(new SuggestedAction("Send availability", "2026-09-12")), 0.9, "x");
+		EmailRecord olderSameStage = email("t-mid", Instant.parse("2026-09-05T10:00:00Z"));
+		processor.process(olderSameStage, mail("t-mid", olderSameStage.receivedAt()), prep);
+
+		assertThat(apps.find(id).orElseThrow().stage()).isEqualTo(Stage.INTERVIEW);
+		assertThat(actions.findForApplication(id)).extracting(ApplicationAction::description)
+				.containsExactlyInAnyOrder("Attend interview", "Send availability");
+		assertThat(reviews.findOpen()).isEmpty();
+	}
+
 	// ---- helpers ----
 
 	/** Links the thread to the application through an earlier email, so the matcher finds it. */
@@ -349,15 +386,23 @@ class EmailProcessorTest {
 	}
 
 	private EmailRecord email(String thread) {
+		return email(thread, Instant.parse("2026-10-29T10:00:00Z"));
+	}
+
+	private EmailRecord email(String thread, Instant at) {
 		String mid = "msg-" + (++seq);
-		MailMessage m = new MailMessage(MailAccount.GMAIL, mid, thread, null, "hr@acme.com", "Subject",
-				Instant.parse("2026-10-29T10:00:00Z"), "body", null, Set.of());
+		MailMessage m = new MailMessage(MailAccount.GMAIL, mid, thread, null, "hr@acme.com", "Subject", at, "body",
+				null, Set.of());
 		return emails.insertIfNew(m, "dk-" + mid).orElseThrow();
 	}
 
 	private static MailMessage mail(String thread) {
-		return new MailMessage(MailAccount.GMAIL, "m-" + thread, thread, null, "hr@acme.com", "Subject",
-				Instant.parse("2026-10-29T10:00:00Z"), "body", null, Set.of());
+		return mail(thread, Instant.parse("2026-10-29T10:00:00Z"));
+	}
+
+	private static MailMessage mail(String thread, Instant at) {
+		return new MailMessage(MailAccount.GMAIL, "m-" + thread, thread, null, "hr@acme.com", "Subject", at, "body",
+				null, Set.of());
 	}
 
 	private static Classification cls(Relevance rel, String company, String role, Stage stage, double conf) {
