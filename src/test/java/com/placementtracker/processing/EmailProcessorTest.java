@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -292,6 +293,51 @@ class EmailProcessorTest {
 		EmailRecord after = emails.find(e.id()).orElseThrow();
 		assertThat(after.applicationId()).isEqualTo(id);
 		assertThat(after.status()).isEqualTo(EmailStatus.REVIEW);
+	}
+
+	@Test
+	void createdInClosedStageGetsNoActions() {
+		for (Stage closed : new Stage[] { Stage.REJECTED, Stage.OFFER }) {
+			String t = "closed-" + closed;
+			Classification c = new Classification(Relevance.YES, "Co " + closed, "Analyst", closed,
+					List.of(new SuggestedAction("Reply to offer", "2026-11-07")), 0.9, "x");
+
+			ProcessOutcome o = processor.process(email(t), mail(t), c);
+
+			assertThat(o).isEqualTo(ProcessOutcome.CREATED);
+			Application a = apps.findAll().stream().filter(x -> x.stage() == closed).findFirst().orElseThrow();
+			assertThat(actions.findForApplication(a.id())).isEmpty();
+		}
+		assertThat(processor.newActionIds()).isEmpty();
+	}
+
+	@Test
+	void notSubmittedUsesStandardFinishTextEvenWithModelAction() {
+		Classification c = new Classification(Relevance.YES, "Acme", "Analyst", Stage.NOT_SUBMITTED,
+				List.of(new SuggestedAction("Don't forget to complete your form", "2026-11-07")), 0.9, "x");
+
+		processor.process(email("t1"), mail("t1"), c);
+
+		long id = apps.findAll().get(0).id();
+		assertThat(actions.findForApplication(id)).singleElement().satisfies(x -> {
+			assertThat(x.description()).isEqualTo("Finish your Acme application");
+			assertThat(x.dueAt()).isEqualTo(OffsetDateTime.parse("2026-11-07T23:59:00Z"));
+		});
+	}
+
+	@Test
+	void repeatedFinishRemindersDoNotDuplicate() {
+		Classification first = new Classification(Relevance.YES, "Acme", "Analyst", Stage.NOT_SUBMITTED,
+				List.of(new SuggestedAction("Complete your application", "2026-11-07")), 0.9, "x");
+		Classification second = new Classification(Relevance.YES, "Acme", "Analyst", Stage.NOT_SUBMITTED,
+				List.of(new SuggestedAction("Last chance to submit", "2026-11-07"),
+						new SuggestedAction("Later thing", "2026-11-09")), 0.9, "x");
+		processor.process(email("t1"), mail("t1"), first);
+
+		processor.process(email("t2"), mail("t2"), second);
+
+		long id = apps.findAll().get(0).id();
+		assertThat(actions.findForApplication(id)).hasSize(1);
 	}
 
 	// ---- helpers ----

@@ -101,7 +101,9 @@ public class EmailProcessor {
 			apps.incrementInterviewRounds(id);
 		}
 		emails.linkApplication(email.id(), id);
-		addActions(id, c, stage, email.id(), c.company().trim());
+		if (!stage.isClosed()) {
+			addActions(id, c, stage, email.id(), c.company().trim());
+		}
 		emails.setStatus(email.id(), EmailStatus.PROCESSED);
 		return ProcessOutcome.CREATED;
 	}
@@ -142,20 +144,23 @@ public class EmailProcessor {
 		return ProcessOutcome.UPDATED;
 	}
 
-	/** Adds each suggested action not already open; returns how many were new. */
+	/**
+	 * Adds each suggested action not already open; returns how many were new. For NOT_SUBMITTED the to-do is always
+	 * the standard "Finish your <company> application", taking only the earliest deadline from the model's actions.
+	 */
 	private int addActions(long appId, Classification c, Stage stage, long emailId, String company) {
 		List<SuggestedAction> suggested = c.actions() == null ? List.of() : c.actions();
+		if (stage == Stage.NOT_SUBMITTED) {
+			OffsetDateTime earliest = suggested.stream().filter(java.util.Objects::nonNull).map(c::dueAtOf)
+					.filter(java.util.Objects::nonNull).min(java.util.Comparator.naturalOrder()).orElse(null);
+			return addAction(appId, "Finish your " + company + " application", earliest, stage, emailId);
+		}
 		int added = 0;
-		boolean any = false;
 		for (SuggestedAction a : suggested) {
 			if (a == null || a.description() == null || a.description().isBlank()) {
 				continue;
 			}
-			any = true;
 			added += addAction(appId, a.description().trim(), c.dueAtOf(a), stage, emailId);
-		}
-		if (!any && stage == Stage.NOT_SUBMITTED) {
-			added += addAction(appId, "Finish your " + company + " application", null, stage, emailId);
 		}
 		return added;
 	}
