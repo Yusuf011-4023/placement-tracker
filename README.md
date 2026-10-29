@@ -55,12 +55,14 @@ The UI is served only on `127.0.0.1`, and state-changing requests need a custom 
 
 - For emails that pass the local pre-filter, **only the sender, subject, date and body text** are sent to Anthropic for classification. Attachments are not sent.
 - Everything else stays on your laptop. There is no server and no analytics.
-- Data lives in `%LOCALAPPDATA%\PlacementTracker`: the SQLite database (`tracker.db`), the Google client secret, the Gmail token (encrypted with Windows DPAPI for your Windows user) and the optional `config.properties`.
+- Data lives in `%LOCALAPPDATA%\PlacementTracker`: the SQLite database (`tracker.db`), the Google client secret, the Gmail token (encrypted with Windows DPAPI for your Windows user), the optional `config.properties` and the `logs` folder.
 - None of this is in the repository. `.gitignore` covers the database, tokens, config and any real-email test fixtures.
 
 ## Setup
 
 You need Windows, a Gmail account, and an Anthropic API account.
+
+The shell snippets below (`./mvnw ...`, `D=$(mktemp -d)`) are for **Git Bash**. In PowerShell or Command Prompt use `mvnw.cmd` instead of `./mvnw`.
 
 ### 1. JDK 21 or newer
 
@@ -73,7 +75,7 @@ Install a JDK (21+) and check `java -version`.
 3. APIs & Services > OAuth consent screen: choose user type **External**, fill in the app name and your email, add your Gmail address as a **Test user**, and optionally add the `gmail.readonly` scope.
 4. Set the publishing status to **In production**. Otherwise refresh tokens expire after about 7 days. At sign-in Google will warn that the app is unverified; choose Advanced > Go to app. That is fine for a personal app that only you use.
 5. APIs & Services > Credentials > Create credentials > **OAuth client ID** > application type **Desktop app**. Download the JSON.
-6. Save it as `%LOCALAPPDATA%\PlacementTracker\google-client-secret.json` (create the folder if needed).
+6. Google names the download `client_secret_<long id>.json`. **Rename it** to `google-client-secret.json` and save it as `%LOCALAPPDATA%\PlacementTracker\google-client-secret.json` (create the folder if needed). If the file is missing, the setup page says exactly where it should go.
 
 ### 3. Anthropic API key
 
@@ -97,6 +99,14 @@ java -jar target/placement-tracker-*.jar
 
 Open <http://127.0.0.1:8765>. The setup page has a **Connect Gmail** button that opens Google's consent screen in your browser. After that, the first sync backfills mail from **1 August 2026** and then checks every 20 minutes (or press **Check now**). A tray icon appears; use it to open the tracker or quit.
 
+### Reconnecting Gmail
+
+If Google stops accepting the stored sign-in (for example you revoked access, changed your password, or the consent screen was left in Testing so the token expired after 7 days), the dashboard shows **"GMAIL needs reconnecting"**. Click **Open setup**, then **Reconnect**: it is one click and a fresh Google sign-in. The old token is discarded first, including one that can no longer be decrypted (for example after a Windows profile change). Nothing is lost while disconnected: the next sync after reconnecting catches up from where it stopped. If the sign-in fails, the setup page shows why.
+
+### Logs
+
+The app writes its log to `%LOCALAPPDATA%\PlacementTracker\logs\tracker.log` (next to the database; it rolls over at 10 MB and keeps 14 files). Look there first if something seems off, for example the AI or Gmail being unavailable. The dashboard also shows a banner when the AI is failing and how many emails are waiting for it; **Try again** on a "Could not be read" item queues it for another attempt.
+
 ## Expected cost
 
 Claude Haiku 5.5 costs $0.10 per million input tokens and $0.50 per million output tokens. A typical email is a few hundred to a couple of thousand tokens, and only emails that pass the pre-filter are sent. As a rough estimate, classifying around 1,000 emails should cost **well under $1**. This is an estimate, not a guarantee; check your usage in the Anthropic Console.
@@ -107,7 +117,7 @@ Claude Haiku 5.5 costs $0.10 per million input tokens and $0.50 per million outp
 ./mvnw test
 ```
 
-No network, Google account or API key is needed. The classification eval set (50 synthetic emails across the four sources and every stage, plus look-alikes that should be ignored) calls the real API, so it is excluded by default. To run it you need a key:
+No network, Google account or API key is needed, and the tests never create or change anything in your real `%LOCALAPPDATA%\PlacementTracker` (each test context uses a throwaway temp folder; the eval below only reads your `config.properties` for the key). The classification eval set (50 synthetic emails across the four sources and every stage, plus look-alikes that should be ignored) calls the real API, so it is excluded by default. To run it you need a key:
 
 ```bash
 ./mvnw test -Peval
