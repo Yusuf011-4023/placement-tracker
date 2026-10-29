@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placement Tracker setup</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <div class="screen">
+    <div class="bar">
+      <span>Placement Tracker: set up</span>
+      <a class="btn" href="index.html">Back to tracker</a>
+    </div>
+    <div class="body">
+      <p class="section-label">Mail account</p>
+      <div class="tile account" id="account">
+        <div>
+          <b>Gmail</b>
+          <div id="status" class="muted">Checking…</div>
+        </div>
+        <button class="btn primary" id="connect" type="button">Connect Gmail</button>
+      </div>
+      <p class="muted" id="hint">
+        Connecting opens a Google sign-in window. The tracker only asks to <b>read</b> your mail, and your
+        sign-in is stored on this computer only.
+      </p>
+      <p class="muted">
+        First time? The README has the one-off setup steps (creating the Google credentials and adding your
+        Anthropic API key). Follow "Setup" there, then press Connect.
+      </p>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>

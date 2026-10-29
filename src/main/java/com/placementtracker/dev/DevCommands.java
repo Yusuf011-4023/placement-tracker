@@ -17,7 +17,8 @@ import com.placementtracker.mail.gmail.GmailMailSource;
 
 /**
  * Hidden developer-only flags. Each flag does nothing unless its property is set to true. Later tasks add more
- * flags here (e.g. {@code tracker.dev.seed}).
+ * flags here. Currently: {@code tracker.dev.gmail-smoke} (fetch recent mail, then exit) and {@code tracker.dev.seed}
+ * (fill an empty database with sample applications, then keep running).
  */
 @Component
 public class DevCommands implements CommandLineRunner {
@@ -30,14 +31,20 @@ public class DevCommands implements CommandLineRunner {
 
 	private final Environment env;
 
-	public DevCommands(GmailMailSource gmail, ApplicationContext context, Environment env) {
+	private final DevSeeder seeder;
+
+	public DevCommands(GmailMailSource gmail, ApplicationContext context, Environment env, DevSeeder seeder) {
 		this.gmail = gmail;
 		this.context = context;
 		this.env = env;
+		this.seeder = seeder;
 	}
 
 	@Override
 	public void run(String... args) {
+		if (env.getProperty("tracker.dev.seed", Boolean.class, false)) {
+			seeder.seedIfEmpty();
+		}
 		if (env.getProperty("tracker.dev.gmail-smoke", Boolean.class, false)) {
 			int code = 0;
 			try {
