@@ -35,5 +35,7 @@ class SchemaTest {
 		assertThat(tables).contains("applications", "field_locks", "actions", "emails", "stage_history",
 				"review_items", "sync_state", "notifications_sent");
 		assertThat(Files.exists(tmp.resolve("tracker.db"))).isTrue();
+		assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history WHERE success = 1", String.class))
+				.contains("1", "2");
 	}
 }
