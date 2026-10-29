@@ -161,4 +161,20 @@ class ClaudeEmailClassifierTest {
 		assertThat(AnthropicConfig.resolveApiKey("sk-env", f)).isEqualTo("sk-env");
 		assertThat(AnthropicConfig.resolveApiKey("", dir.resolve("none.properties"))).isNull();
 	}
+
+	@Test
+	void missingKeyFailsFastWithoutCall() {
+		ClaudeEmailClassifier c = new ClaudeEmailClassifier(p -> {
+			throw new AssertionError("API must not be called without a key");
+		}, props, false);
+		assertThatThrownBy(() -> c.classify(mail("b"))).isInstanceOf(ClassificationException.class)
+				.hasMessage("Anthropic API key not configured")
+				.satisfies(e -> assertThat(((ClassificationException) e).isRetryable()).isTrue());
+	}
+
+	@Test
+	void isConfiguredReflectsKeyPresence() {
+		assertThat(new ClaudeEmailClassifier(p -> null, props, false).isConfigured()).isFalse();
+		assertThat(new ClaudeEmailClassifier(p -> null, props).isConfigured()).isTrue();
+	}
 }

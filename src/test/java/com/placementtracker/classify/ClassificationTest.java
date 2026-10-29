@@ -33,4 +33,19 @@ class ClassificationTest {
 	void missingDueIsNull() {
 		assertThat(c.dueAtOf(new SuggestedAction("x", null))).isNull();
 	}
+
+	@Test
+	void offsetLessDateTimeIsLondonTime() {
+		assertThat(c.dueAtOf(new SuggestedAction("x", "2026-10-20T17:00")))
+				.isEqualTo(OffsetDateTime.parse("2026-10-20T17:00+01:00"));
+		assertThat(c.dueAtOf(new SuggestedAction("x", "2026-11-10T17:00:00")))
+				.isEqualTo(OffsetDateTime.parse("2026-11-10T17:00+00:00"));
+	}
+
+	@Test
+	void unparseableDueIsNull() {
+		for (String v : new String[] { "7 Nov", "2026-1-7", "", "  ", "2026-13-45" }) {
+			assertThat(c.dueAtOf(new SuggestedAction("x", v))).as(v).isNull();
+		}
+	}
 }

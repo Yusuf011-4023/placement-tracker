@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -30,23 +31,41 @@ public class ClaudeEmailClassifier implements EmailClassifier {
 		StructuredMessage<Classification> send(StructuredMessageCreateParams<Classification> params);
 	}
 
+	private final boolean configured;
 	private final ClaudeCall call;
 	private final TrackerProperties props;
 	private final String systemPrompt;
 
 	@Autowired
-	public ClaudeEmailClassifier(AnthropicClient client, TrackerProperties props) {
-		this(p -> client.messages().create(p), props);
+	public ClaudeEmailClassifier(ObjectProvider<AnthropicClient> clients, TrackerProperties props) {
+		this(clients.getIfAvailable(), props);
+	}
+
+	private ClaudeEmailClassifier(AnthropicClient client, TrackerProperties props) {
+		this(client == null ? null : (ClaudeCall) (p -> client.messages().create(p)), props, client != null);
 	}
 
 	ClaudeEmailClassifier(ClaudeCall call, TrackerProperties props) {
+		this(call, props, true);
+	}
+
+	ClaudeEmailClassifier(ClaudeCall call, TrackerProperties props, boolean configured) {
+		this.configured = configured;
 		this.call = call;
 		this.props = props;
 		this.systemPrompt = loadPrompt();
 	}
 
 	@Override
+	public boolean isConfigured() {
+		return configured;
+	}
+
+	@Override
 	public Classification classify(MailMessage m) throws ClassificationException {
+		if (!configured) {
+			throw new ClassificationException("Anthropic API key not configured", true);
+		}
 		StructuredMessageCreateParams<Classification> params = MessageCreateParams.builder()
 				.model(props.ai().model())
 				.maxTokens(MAX_TOKENS)

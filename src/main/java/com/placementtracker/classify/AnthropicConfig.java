@@ -20,16 +20,14 @@ public class AnthropicConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(AnthropicConfig.class);
 
-	/** Used when no key is configured so the app still starts; calls then fail with a 401 ClassificationException. */
-	static final String PLACEHOLDER_KEY = "missing-api-key";
-
+	/** Returns null (a NullBean) when no key is configured; the classifier then reports isConfigured() == false. */
 	@Bean
 	public AnthropicClient anthropicClient(DataDir dataDir) {
 		String key = resolveApiKey(System.getenv("ANTHROPIC_API_KEY"), dataDir.resolve("config.properties"));
 		if (key == null) {
 			log.warn("No Anthropic API key (env ANTHROPIC_API_KEY or anthropic.api-key in config.properties); "
-					+ "email classification will fail until one is set");
-			key = PLACEHOLDER_KEY;
+					+ "email classification is disabled until one is set");
+			return null;
 		}
 		return AnthropicOkHttpClient.builder().apiKey(key).build();
 	}
