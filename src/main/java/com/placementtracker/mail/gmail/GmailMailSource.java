@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.google.api.client.auth.oauth2.Credential;
@@ -47,6 +50,8 @@ public class GmailMailSource implements MailSource {
 
 	static final String USER = "owner";
 
+	private static final Logger log = LoggerFactory.getLogger(GmailMailSource.class);
+
 	private static final String APPLICATION_NAME = "Placement Tracker";
 
 	private final JsonFactory json = GsonFactory.getDefaultInstance();
@@ -55,11 +60,26 @@ public class GmailMailSource implements MailSource {
 
 	private final DpapiDataStoreFactory dataStoreFactory;
 
+	private final Authorizer authorizer;
+
 	private volatile HttpTransport transport;
 
+	@Autowired
 	public GmailMailSource(DataDir dataDir) {
+		this(dataDir, flow -> new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize(USER));
+	}
+
+	/** Test seam: {@code authorizer} replaces the browser sign-in. */
+	GmailMailSource(DataDir dataDir, Authorizer authorizer) {
 		this.secretFile = dataDir.resolve("google-client-secret.json");
 		this.dataStoreFactory = new DpapiDataStoreFactory(dataDir.resolve("tokens").resolve("gmail"));
+		this.authorizer = authorizer;
+	}
+
+	/** Runs the interactive OAuth sign-in for {@link #USER} on the given flow. */
+	@FunctionalInterface
+	interface Authorizer {
+		void authorize(GoogleAuthorizationCodeFlow flow) throws IOException;
 	}
 
 	@Override
@@ -83,8 +103,19 @@ public class GmailMailSource implements MailSource {
 	@Override
 	public void connect() throws MailAuthException {
 		try {
-			GoogleAuthorizationCodeFlow flow = flow();
-			new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize(USER);
+			GoogleAuthorizationCodeFlow flow;
+			try {
+				flow = flow();
+			}
+			catch (DpapiDataStoreFactory.UnreadableStoreException e) {
+				log.warn("Gmail token store is unreadable ({}); moving it aside and signing in afresh", e.getMessage());
+				dataStoreFactory.discardUnreadable(StoredCredential.DEFAULT_DATA_STORE_ID);
+				flow = flow();
+			}
+			// A stored credential (even one whose refresh token Google has revoked) makes authorize() return
+			// without opening the browser, so Reconnect must drop it first.
+			flow.getCredentialDataStore().delete(USER);
+			authorizer.authorize(flow);
 		}
 		catch (IOException | GeneralSecurityException e) {
 			throw new MailAuthException("Gmail sign-in failed: " + e.getMessage(), e);
@@ -147,7 +178,7 @@ public class GmailMailSource implements MailSource {
 
 	/** Refresh/authorization failures become auth errors, everything else a source error. */
 	private static MailSourceException translate(IOException e) throws MailAuthException {
-		boolean auth = e instanceof TokenResponseException
+		boolean auth = e instanceof TokenResponseException || e instanceof DpapiDataStoreFactory.UnreadableStoreException
 				|| (e instanceof HttpResponseException h && h.getStatusCode() == 401)
 				|| (e.getMessage() != null && e.getMessage().contains("invalid_grant"));
 		if (auth) {

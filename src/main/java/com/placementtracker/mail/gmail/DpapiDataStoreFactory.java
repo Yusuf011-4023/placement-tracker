@@ -32,7 +32,33 @@ public class DpapiDataStoreFactory extends AbstractDataStoreFactory {
 	@Override
 	protected <V extends Serializable> DataStore<V> createDataStore(String id) throws IOException {
 		Files.createDirectories(dir);
-		return new DpapiDataStore<>(this, dir.resolve(id.replaceAll("[^A-Za-z0-9._-]", "_") + ".bin"), id);
+		return new DpapiDataStore<>(this, file(id), id);
+	}
+
+	private Path file(String id) {
+		return dir.resolve(id.replaceAll("[^A-Za-z0-9._-]", "_") + ".bin");
+	}
+
+	/**
+	 * Moves an unreadable store file aside (to {@code <id>.bin.unreadable-<millis>}) so the store starts empty.
+	 * A store that failed to load is never cached by the base factory, so the next lookup reads afresh.
+	 */
+	public void discardUnreadable(String id) throws IOException {
+		Path f = file(id);
+		if (Files.exists(f)) {
+			Files.move(f, f.resolveSibling(f.getFileName() + ".unreadable-" + System.currentTimeMillis()),
+					StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
+	/** The store file exists but cannot be decrypted or deserialized (other Windows user, or corrupt). */
+	public static class UnreadableStoreException extends IOException {
+
+		private static final long serialVersionUID = 1L;
+
+		UnreadableStoreException(String message, Throwable cause) {
+			super(message, cause);
+		}
 	}
 
 	static class DpapiDataStore<V extends Serializable> extends AbstractMemoryDataStore<V> {
@@ -76,8 +102,9 @@ public class DpapiDataStoreFactory extends AbstractDataStoreFactory {
 					return (HashMap<String, byte[]>) in.readObject();
 				}
 			}
-			catch (ClassNotFoundException | RuntimeException e) {
-				throw new IOException("Cannot decrypt token store (different Windows user, or corrupt file)", e);
+			catch (ClassNotFoundException | IOException | RuntimeException e) {
+				throw new UnreadableStoreException(
+						"Cannot decrypt token store (different Windows user, or corrupt file)", e);
 			}
 		}
 	}

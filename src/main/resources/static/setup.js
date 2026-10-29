@@ -6,16 +6,22 @@ const statusLine = document.getElementById("status");
 const connectButton = document.getElementById("connect");
 let pollTimer = null;
 
+function needsReconnect(account) {
+  return account.status === "NEEDS_RECONNECT";
+}
+
 function describe(account) {
+  // Checked before `connected`: a token Google has rejected is still on disk, but it no longer works.
+  if (needsReconnect(account)) return "Needs reconnecting";
   if (account.connected) return "Connected";
-  if (account.status === "NEEDS_RECONNECT") return "Needs reconnecting";
   return "Not connected";
 }
 
 function showAccount(account) {
+  const ok = account.connected && !needsReconnect(account);
   statusLine.textContent = describe(account);
-  statusLine.className = account.connected ? "ok" : "muted";
-  connectButton.textContent = account.connected ? "Reconnect" : "Connect Gmail";
+  statusLine.className = ok ? "ok" : "muted";
+  connectButton.textContent = ok || needsReconnect(account) ? "Reconnect" : "Connect Gmail";
 }
 
 async function loadGmail() {
@@ -42,7 +48,7 @@ function pollUntilConnected() {
   statusLine.textContent = "Waiting for you to finish signing in…";
   pollTimer = setInterval(async () => {
     const gmail = await refresh();
-    if (gmail && gmail.connected) {
+    if (gmail && gmail.connected && !needsReconnect(gmail)) {
       clearInterval(pollTimer);
       connectButton.disabled = false;
       toast("Gmail connected. Opening the tracker…");

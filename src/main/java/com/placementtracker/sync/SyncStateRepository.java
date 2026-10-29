@@ -41,4 +41,10 @@ public class SyncStateRepository {
 				+ "ON CONFLICT (account) DO UPDATE SET status = excluded.status, last_error = excluded.last_error")
 				.params(a.name(), s.name(), error).update();
 	}
+
+	/** After a successful sign-in: a NEEDS_RECONNECT state no longer applies (the next sync will confirm). */
+	public void clearNeedsReconnect(MailAccount a) {
+		jdbc.sql("UPDATE sync_state SET status = 'OK', last_error = NULL WHERE account = ? AND status = 'NEEDS_RECONNECT'")
+				.param(a.name()).update();
+	}
 }

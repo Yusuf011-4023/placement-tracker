@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.placementtracker.application.NotFoundException;
 import com.placementtracker.mail.MailSource;
+import com.placementtracker.sync.SyncStateRepository;
 import com.placementtracker.web.dto.Dtos.Account;
 
 /** Sync trigger plus the mail accounts (list and connect). */
@@ -20,10 +21,12 @@ public class SyncController {
 
 	private final SyncRunner runner;
 	private final AccountViews accounts;
+	private final SyncStateRepository syncState;
 
-	public SyncController(SyncRunner runner, AccountViews accounts) {
+	public SyncController(SyncRunner runner, AccountViews accounts, SyncStateRepository syncState) {
 		this.runner = runner;
 		this.accounts = accounts;
+		this.syncState = syncState;
 	}
 
 	@PostMapping("/api/sync")
@@ -43,7 +46,10 @@ public class SyncController {
 		if (source == null) {
 			throw new NotFoundException("No such account: " + account);
 		}
-		runner.connectAsync(source.account().name(), source::connect);
+		runner.connectAsync(source.account().name(), () -> {
+			source.connect();
+			syncState.clearNeedsReconnect(source.account());
+		});
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(Map.of("connecting", true));
 	}
 }
