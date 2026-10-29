@@ -1,6 +1,7 @@
 package com.placementtracker.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -101,6 +102,37 @@ class ApplicationRepositoryTest {
 		assertThat(apps.findByThreadId("GMAIL", "t1")).contains(target);
 		assertThat(actions.findForApplication(target)).extracting(ApplicationAction::id).containsExactly(aid);
 		assertThat(history.forApplication(target)).hasSize(1);
+	}
+
+	@Test
+	void mergeIntoSelfIsRejectedAndDeletesNothing() {
+		long id = apps.insert("Acme", "acme", null, Stage.APPLIED, null, null);
+		actions.insert(id, "Do test", null, Stage.ONLINE_TEST, null);
+
+		assertThatThrownBy(() -> apps.mergeInto(id, id)).isInstanceOf(IllegalArgumentException.class);
+
+		assertThat(apps.find(id)).isPresent();
+		assertThat(actions.findForApplication(id)).hasSize(1);
+	}
+
+	@Test
+	void mergeIntoMissingTargetIsRejected() {
+		long source = apps.insert("Acme", "acme", null, Stage.APPLIED, null, null);
+		actions.insert(source, "Do test", null, Stage.ONLINE_TEST, null);
+
+		assertThatThrownBy(() -> apps.mergeInto(99999L, source)).isInstanceOf(IllegalArgumentException.class);
+
+		assertThat(apps.find(source)).isPresent();
+		assertThat(actions.findForApplication(source)).hasSize(1);
+	}
+
+	@Test
+	void mergeIntoMissingSourceIsRejected() {
+		long target = apps.insert("Acme", "acme", null, Stage.APPLIED, null, null);
+
+		assertThatThrownBy(() -> apps.mergeInto(target, 99999L)).isInstanceOf(IllegalArgumentException.class);
+
+		assertThat(apps.find(target)).isPresent();
 	}
 
 	@Test

@@ -117,6 +117,16 @@ public class ApplicationRepository {
 
 	@Transactional
 	public void mergeInto(long targetId, long sourceId) {
+		if (targetId == sourceId) {
+			throw new IllegalArgumentException("Cannot merge application " + targetId + " into itself");
+		}
+		for (long id : new long[] { targetId, sourceId }) {
+			Integer n = jdbc.sql("SELECT COUNT(*) FROM applications WHERE id = ?").param(id)
+					.query(Integer.class).single();
+			if (n == 0) {
+				throw new IllegalArgumentException("No such application: " + id);
+			}
+		}
 		jdbc.sql("UPDATE emails SET application_id = ? WHERE application_id = ?").params(targetId, sourceId).update();
 		jdbc.sql("UPDATE actions SET application_id = ? WHERE application_id = ?").params(targetId, sourceId).update();
 		jdbc.sql("UPDATE stage_history SET application_id = ? WHERE application_id = ?")
