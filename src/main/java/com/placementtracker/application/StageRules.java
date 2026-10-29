@@ -2,12 +2,12 @@ package com.placementtracker.application;
 
 import com.placementtracker.review.ReviewReason;
 
-final class StageRules {
+public final class StageRules {
 
     private StageRules() {
     }
 
-    static TransitionDecision decide(Stage current, Stage proposed, boolean stageLocked) {
+    public static TransitionDecision decide(Stage current, Stage proposed, boolean stageLocked) {
         if (current == proposed) {
             return new TransitionDecision(TransitionDecision.Kind.NO_CHANGE, null);
         }

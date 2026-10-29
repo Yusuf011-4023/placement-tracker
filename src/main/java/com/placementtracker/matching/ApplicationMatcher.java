@@ -65,7 +65,7 @@ public class ApplicationMatcher {
 
 	/**
 	 * Blank on either side counts as similar. Otherwise token Jaccard of the role words (generic words removed)
-	 * must be at least 0.5. Two roles made only of generic words are similar only when they read identically.
+	 * must be at least 0.5. A role made only of generic words (e.g. \"Placement\") counts as blank.
 	 */
 	static boolean similarRole(String a, String b) {
 		if (isBlank(a) || isBlank(b)) {
@@ -73,8 +73,8 @@ public class ApplicationMatcher {
 		}
 		Set<String> ta = roleTokens(a);
 		Set<String> tb = roleTokens(b);
-		if (ta.isEmpty() && tb.isEmpty()) {
-			return normalise(a).equals(normalise(b));
+		if (ta.isEmpty() || tb.isEmpty()) {
+			return true;
 		}
 		Set<String> union = new HashSet<>(ta);
 		union.addAll(tb);

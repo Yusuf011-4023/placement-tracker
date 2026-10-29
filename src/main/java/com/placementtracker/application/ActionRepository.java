@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -26,18 +27,22 @@ public class ActionRepository {
 		KeyHolder keys = new GeneratedKeyHolder();
 		jdbc.sql("INSERT INTO actions (application_id, description, due_at, status, stage, source_email_id, "
 				+ "created_at) VALUES (?, ?, ?, 'OPEN', ?, ?, ?)")
-				.params(appId, description, dueAt == null ? null : dueAt.toString(), stage.name(), sourceEmailId,
+				.params(appId, description, utc(dueAt), stage.name(), sourceEmailId,
 						Instant.now().toString())
 				.update(keys);
 		return keys.getKey().longValue();
 	}
 
 	public boolean existsOpen(long appId, String description, OffsetDateTime dueAt) {
-		String due = dueAt == null ? null : dueAt.toString();
+		String due = utc(dueAt);
 		Integer n = jdbc.sql("SELECT COUNT(*) FROM actions WHERE application_id = ? AND description = ? "
 				+ "AND status = 'OPEN' AND due_at IS ?")
 				.params(appId, description, due).query(Integer.class).single();
 		return n > 0;
+	}
+
+	private static String utc(OffsetDateTime t) {
+		return t == null ? null : t.withOffsetSameInstant(ZoneOffset.UTC).toString();
 	}
 
 	public List<ApplicationAction> findOpen() {

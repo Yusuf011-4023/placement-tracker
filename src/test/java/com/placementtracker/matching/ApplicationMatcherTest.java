@@ -89,6 +89,16 @@ class ApplicationMatcherTest {
 	}
 
 	@Test
+	void stopwordOnlyRoleCountsAsBlank() {
+		long id = apps.insert("Acme", "acme", "Technology Placement", Stage.APPLIED, null, null);
+
+		assertThat(matcher.match(cls("Acme", "Placement", Stage.ONLINE_TEST), mail("t1")))
+				.isEqualTo(new Existing(id));
+		assertThat(matcher.match(cls("Acme", "Internship 2027", Stage.ONLINE_TEST), mail("t2")))
+				.isEqualTo(new Existing(id));
+	}
+
+	@Test
 	void twoOpenSameCompanyDifferentRolesIsAmbiguous() {
 		long a = apps.insert("Acme", "acme", "Data Placement", Stage.APPLIED, null, null);
 		long b = apps.insert("Acme", "acme", "HR Placement", Stage.APPLIED, null, null);

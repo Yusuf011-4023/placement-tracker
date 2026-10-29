@@ -155,4 +155,14 @@ class ApplicationRepositoryTest {
 		assertThat(actions.findForApplication(id)).extracting(ApplicationAction::status)
 				.containsExactlyInAnyOrder(ApplicationAction.Status.DONE, ApplicationAction.Status.CLOSED);
 	}
+
+	@Test
+	void sameInstantAtDifferentOffsetsIsSameAction() {
+		long id = apps.insert("Acme", "acme", null, Stage.APPLIED, null, null);
+		actions.insert(id, "Test", OffsetDateTime.parse("2026-11-01T10:00:00+01:00"), Stage.ONLINE_TEST, null);
+
+		assertThat(actions.existsOpen(id, "Test", OffsetDateTime.parse("2026-11-01T09:00:00Z"))).isTrue();
+		assertThat(actions.existsOpen(id, "Test", OffsetDateTime.parse("2026-11-01T11:00:00+02:00"))).isTrue();
+		assertThat(actions.existsOpen(id, "Test", OffsetDateTime.parse("2026-11-01T10:00:00Z"))).isFalse();
+	}
 }
