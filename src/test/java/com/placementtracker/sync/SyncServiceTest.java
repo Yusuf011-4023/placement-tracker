@@ -251,6 +251,7 @@ class SyncServiceTest {
 		classifier.configured = false;
 		SyncService svc = service(gmail);
 		svc.syncAll();
+		gmail.messages.clear(); // deleted at the source: gone from the listing and from fetch-by-id
 		gmail.fetchOneMap.clear();
 		classifier.configured = true;
 
@@ -362,6 +363,37 @@ class SyncServiceTest {
 		assertThat(status(MailAccount.GMAIL, "f")).isEqualTo(EmailStatus.PROCESSED);
 	}
 
+	@Test
+	void backlogThenKeyAppliesInDateOrder() {
+		gmail.add(msg(MailAccount.GMAIL, "ot", "<ot@x>", "Online test invitation",
+				Instant.parse("2026-09-01T10:00:00Z")));
+		classifier.byMessageId.put("ot", new Classification(Relevance.YES, "Acme", "Analyst", Stage.ONLINE_TEST,
+				List.of(new SuggestedAction("Complete the online test", "2026-09-08")), 0.95, "t"));
+		classifier.configured = false;
+		SyncService svc = service(gmail);
+		svc.syncAll();
+		assertThat(status(MailAccount.GMAIL, "ot")).isEqualTo(EmailStatus.PENDING);
+
+		gmail.add(msg(MailAccount.GMAIL, "iv", "<iv@x>", "Interview invitation",
+				Instant.parse("2026-09-05T10:00:00Z")));
+		classifier.byMessageId.put("iv", new Classification(Relevance.YES, "Acme", "Analyst", Stage.INTERVIEW,
+				List.of(new SuggestedAction("Attend interview", "2026-09-20")), 0.95, "t"));
+		classifier.configured = true;
+		svc.syncAll();
+
+		assertThat(apps.findAll()).singleElement().satisfies(a -> assertThat(a.stage()).isEqualTo(Stage.INTERVIEW));
+		long id = apps.findAll().get(0).id();
+		assertThat(jdbc.queryForObject(
+				"SELECT status FROM actions WHERE application_id = ? AND description = 'Attend interview'",
+				String.class, id)).isEqualTo("OPEN");
+		assertThat(status(MailAccount.GMAIL, "ot")).isEqualTo(EmailStatus.PROCESSED);
+		assertThat(status(MailAccount.GMAIL, "iv")).isEqualTo(EmailStatus.PROCESSED);
+		assertThat(reviews.findOpen()).isEmpty();
+		// applied in date order: created at the online test, then moved forward by the invite
+		assertThat(jdbc.queryForList("SELECT to_stage FROM stage_history WHERE application_id = ? ORDER BY id",
+				String.class, id)).containsExactly("ONLINE_TEST", "INTERVIEW");
+	}
+
 	// ---- helpers ----
 
 	int count(String table) {
@@ -444,6 +476,7 @@ class SyncServiceTest {
 		String runtimeWhenSubjectContains;
 		String unsureWhenSubjectContains;
 		String actionDescription;
+		final Map<String, Classification> byMessageId = new HashMap<>();
 
 		public boolean isConfigured() {
 			return configured;
@@ -451,6 +484,9 @@ class SyncServiceTest {
 
 		public Classification classify(MailMessage m) throws ClassificationException {
 			calls++;
+			if (byMessageId.containsKey(m.messageId())) {
+				return byMessageId.get(m.messageId());
+			}
 			if (failAll) {
 				throw new ClassificationException("outage", true);
 			}

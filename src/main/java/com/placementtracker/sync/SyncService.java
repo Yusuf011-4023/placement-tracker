@@ -3,7 +3,9 @@ package com.placementtracker.sync;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +37,7 @@ import com.placementtracker.processing.ProcessOutcome;
 
 /**
  * Pulls mail from every connected source, de-duplicates and pre-filters it, classifies what is left and applies the
- * result. Nothing is skipped permanently: the high-water mark moves only after a full listing succeeds, and emails
+ * result in received-date order. Nothing is skipped permanently: the high-water mark moves only after a full listing succeeds, and emails
  * that could not be classified stay in the database (FAILED or PENDING) and are retried on every pass.
  */
 @Service
@@ -76,12 +78,18 @@ public class SyncService {
 		this.props = props;
 	}
 
-	/** Runs one pass. A concurrent caller waits for the running pass, then runs its own (everything is idempotent). */
+	/**
+	 * Runs one pass in two steps. First every connected source is listed and each new email is stored, then
+	 * de-duplicated or pre-filtered. Then everything still waiting (PENDING, or FAILED under the attempt cap) is
+	 * classified and applied in ONE sequence ordered by received date, so an older email is never applied after a
+	 * newer one just because it sat in the backlog. A concurrent caller waits for the running pass, then runs its own
+	 * (everything is idempotent).
+	 */
 	public synchronized SyncReport syncAll() {
 		Run run = new Run(classifier.isConfigured());
 		for (MailSource source : sources) {
 			try {
-				syncSource(source, run);
+				fetchAndStore(source, run);
 			}
 			catch (RuntimeException e) {
 				log.error("Sync of {} failed unexpectedly", source.account(), e);
@@ -90,15 +98,16 @@ public class SyncService {
 			}
 		}
 		try {
-			retryPass(run);
+			processWaiting(run);
 		}
 		catch (RuntimeException e) {
-			log.error("Retry pass failed", e);
+			log.error("Processing pass failed", e);
 		}
 		return run.report(processor.newActionIds());
 	}
 
-	private void syncSource(MailSource source, Run run) {
+	/** Step 1: list the source, store what is new, mark duplicates and filtered mail. Classifies nothing. */
+	private void fetchAndStore(MailSource source, Run run) {
 		MailAccount account = source.account();
 		if (!source.isConnected()) {
 			run.statuses.put(account, SyncStatus.NOT_CONNECTED);
@@ -133,17 +142,96 @@ public class SyncService {
 				newest = seenAt;
 			}
 			Optional<EmailRecord> rec = emails.insertIfNew(m, DedupeKeys.of(m));
-			if (rec.isPresent()) {
-				handle(rec.get(), m, run);
+			// Already-stored messages are remembered too: one still waiting then needs no re-fetch.
+			if (rec.isEmpty() || screen(rec.get(), m, run)) {
+				run.fetchedMessages.put(key(account, m.messageId()), m);
 			}
 		}
+		// Safe before classification: everything new is stored, and step 2 picks it up now or on a later run.
 		syncState.markSuccess(account, newest == null ? props.sync().backfillFrom() : newest, Instant.now());
 		run.statuses.put(account, SyncStatus.OK);
 	}
 
+	/** Marks the email DUPLICATE or FILTERED when it is one; returns true when it still needs classifying. */
+	private boolean screen(EmailRecord rec, MailMessage m, Run run) {
+		try {
+			if (emails.existsDedupeKeyBefore(rec.dedupeKey(), rec.id())) {
+				emails.setStatus(rec.id(), EmailStatus.DUPLICATE);
+				return false;
+			}
+			if (!preFilter.shouldClassify(m)) {
+				emails.setStatus(rec.id(), EmailStatus.FILTERED);
+				return false;
+			}
+			return true;
+		}
+		catch (RuntimeException e) {
+			recordFailure(rec, e, run);
+			return false;
+		}
+	}
+
+	/**
+	 * Step 2: escalate FAILED emails at the attempt cap, then classify and apply every PENDING email and every FAILED
+	 * one under the cap, oldest first. A message not listed in this run is re-fetched by id.
+	 */
+	private void processWaiting(Run run) {
+		for (EmailRecord rec : emails.findFailedAtCap(props.ai().maxAttempts())) {
+			try {
+				if (failures.escalate(rec)) {
+					run.newReviewItems++;
+				}
+			}
+			catch (RuntimeException e) {
+				log.error("Could not escalate email {}", rec.id(), e);
+			}
+		}
+		if (!run.aiConfigured) {
+			return; // everything stays PENDING, no attempt burned; picked up once a key exists
+		}
+		List<EmailRecord> todo = new ArrayList<>(emails.findRetryable(props.ai().maxAttempts()));
+		todo.addAll(emails.findPending());
+		todo.sort(OLDEST_FIRST);
+		Set<Long> seen = new HashSet<>();
+		for (int i = 0; i < todo.size(); i++) {
+			EmailRecord rec = todo.get(i);
+			if (run.breakerOpen()) {
+				break; // AI looks down: leave the rest as they are, no attempt counted
+			}
+			if (!seen.add(rec.id())) {
+				continue;
+			}
+			MailMessage m = run.fetchedMessages.get(key(rec.account(), rec.messageId()));
+			if (m == null) {
+				MailSource source = sources.stream().filter(s -> s.account() == rec.account()).findFirst()
+						.orElse(null);
+				if (source == null || !source.isConnected()) {
+					continue;
+				}
+				Optional<MailMessage> fetched;
+				try {
+					fetched = source.fetchOne(rec.messageId());
+				}
+				catch (MailAuthException | MailSourceException | RuntimeException e) {
+					log.warn("Could not re-fetch {} for retry: {}", rec.messageId(), e.getMessage());
+					continue;
+				}
+				if (fetched.isEmpty()) {
+					log.warn("Message {} ({}) no longer exists; marking FILTERED", rec.messageId(), rec.account());
+					emails.setStatus(rec.id(), EmailStatus.FILTERED);
+					// a DUPLICATE sibling must not stay stranded behind a copy that no longer exists
+					int next = i + 1;
+					emails.reviveDuplicate(rec.dedupeKey()).ifPresent(r -> todo.add(next, r));
+					continue;
+				}
+				m = fetched.get();
+			}
+			handle(rec, m, run);
+		}
+	}
+
 	/** Dedupe, pre-filter, classify, apply. Never throws for a per-email problem. */
 	private void handle(EmailRecord rec, MailMessage m, Run run) {
-		run.handled.add(rec.id());
 		try {
 			if (emails.existsDedupeKeyBefore(rec.dedupeKey(), rec.id())) {
 				emails.setStatus(rec.id(), EmailStatus.DUPLICATE);
@@ -152,12 +240,6 @@ public class SyncService {
 			if (!preFilter.shouldClassify(m)) {
 				emails.setStatus(rec.id(), EmailStatus.FILTERED);
 				return;
-			}
-			if (!run.aiConfigured) {
-				return; // stays PENDING, no attempt burned; picked up once a key exists
-			}
-			if (run.breakerOpen()) {
-				return; // AI looks down: leave as is, no attempt counted
 			}
 			Classification c;
 			try {
@@ -198,58 +280,17 @@ public class SyncService {
 		}
 	}
 
-	/** Retries FAILED emails under the attempt cap and anything left PENDING, re-fetching each by message id. */
-	private void retryPass(Run run) {
-		for (EmailRecord rec : emails.findFailedAtCap(props.ai().maxAttempts())) {
-			try {
-				if (failures.escalate(rec)) {
-					run.newReviewItems++;
-				}
-			}
-			catch (RuntimeException e) {
-				log.error("Could not escalate email {}", rec.id(), e);
-			}
-		}
-		if (!run.aiConfigured) {
-			return;
-		}
-		List<EmailRecord> todo = new ArrayList<>(emails.findRetryable(props.ai().maxAttempts()));
-		todo.addAll(emails.findPending());
-		Set<Long> seen = new HashSet<>();
-		for (int i = 0; i < todo.size(); i++) {
-			EmailRecord rec = todo.get(i);
-			if (run.breakerOpen()) {
-				break;
-			}
-			if (run.handled.contains(rec.id()) || !seen.add(rec.id())) {
-				continue;
-			}
-			MailSource source = sources.stream().filter(s -> s.account() == rec.account()).findFirst().orElse(null);
-			if (source == null || !source.isConnected()) {
-				continue;
-			}
-			Optional<MailMessage> m;
-			try {
-				m = source.fetchOne(rec.messageId());
-			}
-			catch (MailAuthException | MailSourceException | RuntimeException e) {
-				log.warn("Could not re-fetch {} for retry: {}", rec.messageId(), e.getMessage());
-				continue;
-			}
-			if (m.isEmpty()) {
-				log.warn("Message {} ({}) no longer exists; marking FILTERED", rec.messageId(), rec.account());
-				emails.setStatus(rec.id(), EmailStatus.FILTERED);
-				// a DUPLICATE sibling must not stay stranded behind a copy that no longer exists
-				emails.reviveDuplicate(rec.dedupeKey()).ifPresent(todo::add);
-				continue;
-			}
-			handle(rec, m.get(), run);
-		}
+	private static String key(MailAccount account, String messageId) {
+		return account.name() + "/" + messageId;
 	}
+
+	private static final Comparator<EmailRecord> OLDEST_FIRST = Comparator
+			.comparing(EmailRecord::receivedAt, Comparator.nullsLast(Comparator.<Instant>naturalOrder()))
+			.thenComparingLong(EmailRecord::id);
 
 	private static final class Run {
 		final boolean aiConfigured;
-		final Set<Long> handled = new HashSet<>();
+		final Map<String, MailMessage> fetchedMessages = new HashMap<>();
 		final Map<MailAccount, SyncStatus> statuses = new EnumMap<>(MailAccount.class);
 		int fetched;
 		int classified;
