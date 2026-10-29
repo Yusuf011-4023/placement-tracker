@@ -131,6 +131,16 @@ class ApplicationControllerTest extends ApiTestBase {
 	}
 
 	@Test
+	void addActionToClosedApplicationIs409() throws Exception {
+		long a = app("Acme", Stage.REJECTED);
+
+		mvc.perform(own(post("/api/applications/" + a + "/actions")).content("{\"description\":\"Call\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error").isString());
+		assertThat(actions.findOpen()).isEmpty();
+	}
+
+	@Test
 	void errorMappingReturns400And409() throws Exception {
 		long a = app("Acme", Stage.APPLIED);
 		// 400: unknown stage, merge into itself, unknown review item, malformed JSON

@@ -15,6 +15,7 @@ import com.placementtracker.application.Application;
 import com.placementtracker.application.ApplicationRepository;
 import com.placementtracker.application.HistoryRepository;
 import com.placementtracker.application.Stage;
+import com.placementtracker.application.StageMover;
 import com.placementtracker.application.StageRules;
 import com.placementtracker.application.TransitionDecision;
 import com.placementtracker.classify.Classification;
@@ -46,13 +47,14 @@ public class EmailProcessor {
 	private final EmailRepository emails;
 	private final ReviewRepository reviews;
 	private final ApplicationMatcher matcher;
+	private final StageMover mover;
 	private final TrackerProperties props;
 	private final ObjectMapper json;
 
 	private final List<Long> newActionIds = new ArrayList<>();
 
 	public EmailProcessor(ApplicationRepository apps, ActionRepository actions, HistoryRepository history,
-			EmailRepository emails, ReviewRepository reviews, ApplicationMatcher matcher, TrackerProperties props,
+			EmailRepository emails, ReviewRepository reviews, ApplicationMatcher matcher, StageMover mover, TrackerProperties props,
 			ObjectMapper json) {
 		this.apps = apps;
 		this.actions = actions;
@@ -60,6 +62,7 @@ public class EmailProcessor {
 		this.emails = emails;
 		this.reviews = reviews;
 		this.matcher = matcher;
+		this.mover = mover;
 		this.props = props;
 		this.json = json;
 	}
@@ -154,17 +157,8 @@ public class EmailProcessor {
 	private void moveToStage(Application app, Classification c, long emailId, String source) {
 		long appId = app.id();
 		Stage proposed = c.stage();
-		if (proposed != app.stage()) {
-			actions.closeOpenForStage(appId, app.stage());
-			apps.updateStage(appId, proposed);
-			history.record(appId, app.stage(), proposed, source, emailId);
-			if (proposed == Stage.INTERVIEW) {
-				apps.incrementInterviewRounds(appId);
-			}
-			if (proposed.isClosed()) {
-				actions.closeAllOpen(appId);
-			}
-			else {
+		if (mover.move(app, proposed, source, emailId, false)) {
+			if (!proposed.isClosed()) {
 				addActions(appId, c, proposed, emailId, app.company());
 			}
 		}

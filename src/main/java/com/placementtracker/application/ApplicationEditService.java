@@ -23,11 +23,14 @@ public class ApplicationEditService {
 	private final ApplicationRepository apps;
 	private final ActionRepository actions;
 	private final HistoryRepository history;
+	private final StageMover stageMover;
 
-	public ApplicationEditService(ApplicationRepository apps, ActionRepository actions, HistoryRepository history) {
+	public ApplicationEditService(ApplicationRepository apps, ActionRepository actions, HistoryRepository history,
+			StageMover stageMover) {
 		this.apps = apps;
 		this.actions = actions;
 		this.history = history;
+		this.stageMover = stageMover;
 	}
 
 	@Transactional
@@ -100,22 +103,16 @@ public class ApplicationEditService {
 	}
 
 	private void changeStageByUser(Application app, Stage stage) {
-		long id = app.id();
-		actions.closeOpenForStage(id, app.stage());
-		apps.updateStage(id, stage);
-		history.record(id, app.stage(), stage, SOURCE_USER, null);
-		apps.lock(id, "stage");
-		if (stage == Stage.INTERVIEW && app.interviewRounds() == 0) {
-			apps.incrementInterviewRounds(id);
-		}
-		if (stage.isClosed()) {
-			actions.closeAllOpen(id);
-		}
+		stageMover.move(app, stage, SOURCE_USER, null, true);
+		apps.lock(app.id(), "stage");
 	}
 
 	@Transactional
 	public long addAction(long appId, String description, OffsetDateTime dueAt) {
 		Application app = apps.find(appId).orElseThrow(() -> new NotFoundException("No such application: " + appId));
+		if (app.stage().isClosed()) {
+			throw new IllegalStateException("Cannot add a to-do to a closed application");
+		}
 		if (description == null || description.isBlank()) {
 			throw new IllegalArgumentException("description is required");
 		}
