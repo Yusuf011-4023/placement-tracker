@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: placement-tracker
+server:
+  address: 127.0.0.1
+  port: 8765
+tracker:
+  sync:
+    interval-minutes: 20
+    backfill-from: 2026-08-01T00:00:00Z
+  ai:
+    model: claude-haiku-5-5
+    confidence-threshold: 0.7
+    max-attempts: 3
