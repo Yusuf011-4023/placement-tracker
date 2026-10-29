@@ -12,3 +12,56 @@ tracker:
     model: claude-haiku-5-5
     confidence-threshold: 0.7
     max-attempts: 3
+  prefilter:
+    keywords:
+      - application
+      - applied
+      - apply
+      - placement
+      - internship
+      - intern
+      - industrial
+      - year in industry
+      - assessment
+      - online test
+      - test invitation
+      - interview
+      - assessment centre
+      - candidate
+      - offer
+      - recruit
+      - talent
+      - hiring
+      - careers
+      - vacancy
+      - position
+      - role
+      - shortlist
+      - next steps
+      - unfortunately
+      - thank you for your interest
+      - invitation
+    ats-domains:
+      - myworkday.com
+      - workday.com
+      - successfactors.com
+      - successfactors.eu
+      - oraclecloud.com
+      - taleo.net
+      - greenhouse.io
+      - lever.co
+      - smartrecruiters.com
+      - icims.com
+      - hirevue.com
+      - tal.net
+      - eightfold.ai
+      - avature.net
+      - brightnetwork.co.uk
+      - gradcracker.com
+      - ratemyplacement.co.uk
+      - higherin.com
+      - linkedin.com
+      - indeed.com
+      - targetjobs.co.uk
+      - prospects.ac.uk
+    extra-domains: []
