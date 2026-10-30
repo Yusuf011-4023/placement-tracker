@@ -34,7 +34,9 @@ class GmailFetchTest {
 	@TempDir
 	Path tmp;
 
-	private final List<String> fetched = new ArrayList<>();
+	private final List<String> fetched = java.util.Collections.synchronizedList(new ArrayList<>());
+	private final java.util.Map<String, Integer> failIds = new java.util.concurrent.ConcurrentHashMap<>();
+	private volatile java.util.concurrent.CountDownLatch gate; // when set, each get waits here (up to 2 s)
 	private int failAfter = Integer.MAX_VALUE; // messages.get fails for mN with N above this
 	private int failStatus = 500;
 
@@ -56,7 +58,11 @@ class GmailFetchTest {
 						}
 						else {
 							String id = path.substring(path.lastIndexOf('/') + 1);
-							fetched.add(id);
+							Integer idStatus = onGet(id);
+							if (idStatus != null) {
+								return new MockLowLevelHttpResponse().setStatusCode(idStatus)
+										.setContentType("application/json").setContent("{\"error\":{\"code\":" + idStatus + ",\"message\":\"x\"}}");
+							}
 							if (Integer.parseInt(id.substring(1)) > failAfter) {
 								return new MockLowLevelHttpResponse().setStatusCode(failStatus)
 										.setContentType("application/json").setContent("{\"error\":{\"code\":" + failStatus + ",\"message\":\"x\"}}");
@@ -80,6 +86,85 @@ class GmailFetchTest {
 		return new GmailMailSource(dir, flow -> {
 		}, new RequestThrottle(1_000_000, System::nanoTime, nanos -> {
 		}), batchLimit);
+	}
+
+	/** Records the get, waits on the gate if one is set, and returns a forced failure status for the id or null. */
+	private Integer onGet(String id) {
+		fetched.add(id);
+		java.util.concurrent.CountDownLatch g = gate;
+		if (g != null) {
+			g.countDown();
+			try {
+				g.await(2, java.util.concurrent.TimeUnit.SECONDS);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
+		return failIds.get(id);
+	}
+
+	private static final Instant SINCE =Instant.parse("2026-06-01T00:00:00Z");
+
+	@Test
+	void fetchesBodiesConcurrently() throws Exception {
+		GmailMailSource source = source(100);
+		gate = new java.util.concurrent.CountDownLatch(4);
+		long start = System.nanoTime();
+
+		List<MailMessage> batch = source.fetchSince(gmail(8), SINCE, id -> false);
+
+		// sequential would wait the full 2 s on each of the first 3 gets before the latch opens
+		assertThat(java.time.Duration.ofNanos(System.nanoTime() - start)).isLessThan(java.time.Duration.ofSeconds(6));
+		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1", "m2", "m3", "m4", "m5", "m6", "m7",
+				"m8");
+	}
+
+	@Test
+	void middleFailureKeepsOnlyOlderPrefix() throws Exception {
+		GmailMailSource source = source(100);
+		failIds.put("m3", 500);
+
+		List<MailMessage> batch = source.fetchSince(gmail(5), SINCE, id -> false);
+
+		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1", "m2");
+	}
+
+	@Test
+	void notFoundDoesNotBreakPrefix() throws Exception {
+		GmailMailSource source = source(100);
+		failIds.put("m2", 404);
+
+		List<MailMessage> batch = source.fetchSince(gmail(5), SINCE, id -> false);
+
+		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1", "m3", "m4", "m5");
+	}
+
+	@Test
+	void firstFailureThrows() throws Exception {
+		GmailMailSource source = source(100);
+		failIds.put("m1", 500);
+
+		assertThatThrownBy(() -> source.fetchSince(gmail(5), SINCE, id -> false))
+				.isInstanceOf(com.placementtracker.mail.MailSourceException.class);
+	}
+
+	@Test
+	void authFailureAnywhereThrowsAuth() throws Exception {
+		GmailMailSource source = source(100);
+		failIds.put("m4", 401);
+
+		assertThatThrownBy(() -> source.fetchSince(gmail(5), SINCE, id -> false))
+				.isInstanceOf(com.placementtracker.mail.MailAuthException.class);
+	}
+
+	@Test
+	void fetchManyReturnsPrefixInOrder() throws Exception {
+		GmailMailSource source = source(100);
+		failIds.put("m3", 500);
+
+		assertThat(source.fetchAll(gmail(5), List.of("m1", "m2", "m3", "m4"))).extracting(MailMessage::messageId)
+				.containsExactly("m1", "m2");
 	}
 
 	@Test
