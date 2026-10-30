@@ -2,17 +2,19 @@
 
 *Date: 29 October 2026 · Status: draft for approval (builder check done; answers added)*
 
+> **2026-10-29: owner decided to track personal Gmail only; Outlook/forwarding dropped.** The sections below have been updated to match; the Microsoft Graph integration and the forwarding fallback were not built.
+
 ## 1. Intent
 
-A student applying for industrial placements loses track of applications because the emails (confirmations, test invites, interview requests, outcomes) are buried among everything else in their inboxes. They have forgotten companies they'd already applied to.
+A student applying for industrial placements loses track of applications because the emails (confirmations, test invites, interview requests, outcomes) are buried among everything else in their inbox. They have forgotten companies they'd already applied to.
 
-The Placement Tracker is a personal app on their Windows laptop. It reads their **Gmail** and **university Outlook (Microsoft 365)** inboxes, works out which emails are about placement applications, and keeps one up-to-date record per application. It puts **what needs action** first and sends **Windows notifications** so nothing is forgotten.
+The Placement Tracker is a personal app on their Windows laptop. It reads their **Gmail** inbox (the owner always applies with their personal Gmail), works out which emails are about placement applications, and keeps one up-to-date record per application. It puts **what needs action** first and sends **Windows notifications** so nothing is forgotten.
 
 It is also a **CV/portfolio project**. The owner will publish it on GitHub and explain it in interviews, so code quality, clear structure and a good README matter as much as features.
 
 ## 2. Goals
 
-- Every placement application found in either inbox appears in the tracker, with no silent misses.
+- Every placement application found in the inbox appears in the tracker, with no silent misses.
 - Each application shows its correct current stage.
 - The owner sees immediately what needs doing (tests, interviews to book, deadlines).
 - The owner is notified on the laptop when a new action appears or a deadline approaches.
@@ -44,18 +46,18 @@ The owner said they'd abandon the tracker if it **misses applications** or **get
 - The web UI is served **only on `127.0.0.1`**, never on a network interface.
 - *(Builder's choice:)* whether it starts automatically when Windows logs in. If so, make it optional and document how to turn it off.
 
-### 5.2 Connecting the inboxes
+### 5.2 Connecting the inbox
 - **Gmail:** Google OAuth desktop flow with the read-only Gmail scope (`gmail.readonly`).
-- **University Outlook:** Microsoft Graph with delegated `Mail.Read`, via MSAL for Java.
+- **Other providers:** not built. Mail access sits behind a `MailSource` interface, so another provider could be added later without touching the rest of the app.
 - A first-run setup page walks the owner through connecting each account and shows whether each is connected or needs reconnecting.
 - Refresh tokens are stored outside the repo and protected (see §7).
 
 ### 5.3 Checking for mail
 - Automatic check every **15–30 minutes** while the app is running (builder picks within the range; configurable), plus a **"Check now"** button.
-- **First run backfills from 1 August 2026.**
-- **Folders scanned (my call, given "no silent misses"):** every folder except Sent, Drafts and Trash/Deleted. That includes Gmail Spam and the Promotions/Updates tabs, and Outlook Junk, "Other" and user folders, because recruiter and applicant-tracking emails often land there. The local pre-filter keeps the extra volume from reaching the AI.
+- **First run backfills from 1 June 2026** (changed from 1 Aug 2026 by the owner on 2026-10-30). It runs oldest first in batches of 500 messages, throttled to 10 Gmail requests per second, with progress saved after every batch.
+- **Folders scanned (my call, given "no silent misses"):** every folder except Sent, Drafts and Trash/Deleted. That includes Gmail Spam and the Promotions/Updates tabs, and user labels, because recruiter and applicant-tracking emails often land there. The local pre-filter keeps the extra volume from reaching the AI.
 - The app records which messages it has processed (per-account message IDs and a high-water mark). Each run processes everything new since the last *successful* run, so nothing is skipped after downtime or failures. Failed messages are retried on the next run.
-- A status line shows when the last check finished, per account, and any failure (for example "Outlook needs reconnecting").
+- A status line shows when the last check finished, and any failure (for example "Gmail needs reconnecting").
 
 ### 5.4 Understanding the emails
 Two stages:
@@ -125,7 +127,7 @@ Reference mockup: `.superpowers/brainstorm/main-screen-v2.html`.
 - **Top row, right: "Needs action"**: items sorted by deadline, colour-coded (orange: due within 1 day; yellow: within 3 days).
 - **"Please check" list**: shown only when there are items. *(My call:)* placed directly under the top row so it can't be missed.
 - **Board:** one column per stage (Applied, Online test, Interview, Assessment centre, Outcome). Column headers use the same colours as the chart. Cards needing action are highlighted. Closed cards are muted.
-- **Clicking a card** opens its details: all fields (editable), the stage history with source emails, and links to open each original email in Gmail/Outlook on the web.
+- **Clicking a card** opens its details: all fields (editable), the stage history with source emails, and links to open each original email in Gmail on the web.
 - Light and dark mode follow the Windows setting.
 - *(Builder's choice:)* search/filter on the board, and the front-end approach (plain HTML/CSS/JS or a light library). It should stay simple enough for the owner to explain.
 
@@ -138,7 +140,7 @@ Reference mockup: `.superpowers/brainstorm/main-screen-v2.html`.
 | Storage | Local **SQLite** database file in the user's app-data folder, not in the repo | My call |
 | Build | Maven via the Maven wrapper (`mvnw`), since Maven isn't installed globally | My call |
 | Gmail | Google API Java client, `gmail.readonly` | My call |
-| Outlook | Microsoft Graph Java SDK + MSAL4J, delegated `Mail.Read` | My call |
+| Mail access | `MailSource` interface (Gmail is the only implementation) | My call |
 | AI | Anthropic Java SDK, small Claude model, structured output | Owner chose AI; model is my call |
 | Secrets | Anthropic API key from an environment variable or a local config file outside the repo. OAuth tokens stored in the user's app-data folder (encrypted at rest or in Windows Credential Manager; builder's choice) | My call |
 | Repo hygiene | `.gitignore` covers the database, tokens, config, `.superpowers/` and any real-email fixtures | My call |
@@ -147,11 +149,11 @@ Reference mockup: `.superpowers/brainstorm/main-screen-v2.html`.
 
 - **Unit and integration tests** for the parts with real logic: the pre-filter, email-to-application matching, stage transitions (forward-only, manual-edit precedence), backfill/catch-up and notification de-duplication.
 - **Classification evaluation set:** a collection of example placement emails covering all stages and all four sources (career sites, job boards, uni portal, recruiters), plus non-placement look-alikes. Synthetic examples are committed. Any real examples stay in a git-ignored folder. A test run reports how many company/stage extractions were correct, so changes to prompts or models can't silently make accuracy worse.
-- The Gmail, Outlook and Anthropic clients sit behind interfaces so tests run without network access.
+- The Gmail and Anthropic clients sit behind interfaces so tests run without network access.
 
 ## 9. Constraints and risks
 
-- **University tenant consent (main risk):** many university Microsoft 365 tenants block or require admin approval for third-party apps requesting `Mail.Read`. IMAP is not a real alternative, because Microsoft 365's OAuth IMAP needs the same consent. **The first build step is a small throwaway check:** register an Entra app and try to sign in and read one email with `Mail.Read`. If the university blocks it, the fallback is auto-forwarding the university mailbox to Gmail (**the owner has agreed to this**). In that case the Graph integration isn't built, and the Gmail side must extract the original sender, subject and date from forwarded emails and de-duplicate messages that appear in both places. Gmail is unaffected either way.
+- **Single mail source:** the earlier university Microsoft 365 consent risk and the forwarding fallback no longer apply, because the owner decided to track personal Gmail only.
 - **Google OAuth "testing" mode:** an unverified Google Cloud app in testing mode has refresh tokens that expire after about 7 days. The builder should document the setup (publishing the app as "In production" for personal use, or handling re-authorisation smoothly) and surface "needs reconnecting" clearly.
 - **Cost:** the Anthropic API is pay-as-you-go and requires its own account (separate from a Claude subscription). The pre-filter keeps volume down. The README should explain the expected cost.
 - **Privacy:** email text of likely-relevant messages is sent to Anthropic for processing. Nothing else leaves the laptop.
@@ -163,4 +165,4 @@ Reference mockup: `.superpowers/brainstorm/main-screen-v2.html`.
 - Front-end approach (see §6), and how the donut chart is drawn (inline SVG as in the mockup is fine).
 - Exact sync interval within 15–30 min, the confidence threshold, and the prompt wording.
 - Auto-start on login (§5.1), delete/merge (§5.7) and board search/filter (§6).
-- README contents. It should include setup steps for Google Cloud, Microsoft Entra app registration and an Anthropic API key, plus screenshots.
+- README contents. It should include setup steps for Google Cloud and an Anthropic API key, plus screenshots.

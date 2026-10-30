@@ -1,0 +1,182 @@
+[
+  {
+    "id": "rec-not-submitted",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-028",
+      "threadId": "eval-thread-028",
+      "internetMessageId": "<eval-028@mail.example>",
+      "from": "Jordan Ellis <jordan.ellis@talentbridge.example>",
+      "subject": "Please complete your Meridian Pharma application form",
+      "receivedAt": "2026-10-29T07:50:00Z",
+      "bodyText": "Hi Alex,\n\nJust a quick nudge - I put you forward for the Placement Chemist role at Meridian Pharma but I can see the online form I sent you is only half completed. They need it submitted by Friday 6 November, otherwise I can't get your CV in front of the hiring manager.\n\nIt's only the right-to-work section and the motivation question left: https://forms.talentbridge.example/meridian/2291\n\nShout if you hit any problems!\n\n--\nJordan Ellis\nStudent Placements Consultant | TalentBridge Recruitment\nT: 020 7946 0211 | www.talentbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Meridian Pharma",
+    "expectedStage": "NOT_SUBMITTED"
+  },
+  {
+    "id": "rec-applied-put-forward",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-029",
+      "threadId": "eval-thread-029",
+      "internetMessageId": "<eval-029@mail.example>",
+      "from": "Sam Whitaker <sam.whitaker@gradbridge.example>",
+      "subject": "Putting you forward - Industrial Placement, Ferrous Rail",
+      "receivedAt": "2026-10-13T11:35:00Z",
+      "bodyText": "Hi Alex,\n\nThanks for chatting this morning. As agreed, I've put your CV forward to Ferrous Rail for their Industrial Placement - Asset Data Analyst (Derby, 12 months from July 2027). They've confirmed they have received it and I'll let you know as soon as they've reviewed it.\n\nNo need to apply separately for this one - I'll handle it.\n\nKind regards,\n\n--\nSam Whitaker\nPlacement Resourcer | GradBridge\nT: 020 7946 0305 | www.gradbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Ferrous Rail",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "rec-online-test",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-030",
+      "threadId": "eval-thread-030",
+      "internetMessageId": "<eval-030@mail.example>",
+      "from": "Aisha Rahman <aisha@careerlink-agency.example>",
+      "subject": "Next step with Corvus Analytics - online assessment",
+      "receivedAt": "2026-10-26T16:20:00Z",
+      "bodyText": "Hi Alex,\n\nGood news: Corvus Analytics would like you to take their numerical reasoning test before they decide on interviews for the Data Placement Student role I submitted you for.\n\nYou'll receive a link from them directly. Please complete it by Monday 2 November 2026. It takes around 30 minutes.\n\nLet me know once it's done and I'll chase for feedback.\n\nBest wishes,\n\n--\nAisha Rahman\nSenior Consultant | CareerLink Agency\nT: 020 7946 0118 | www.careerlink-agency.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Corvus Analytics",
+    "expectedStage": "ONLINE_TEST"
+  },
+  {
+    "id": "rec-interview",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-031",
+      "threadId": "eval-thread-031",
+      "internetMessageId": "<eval-031@mail.example>",
+      "from": "Jordan Ellis <jordan.ellis@talentbridge.example>",
+      "subject": "Interview with Arkwright Engineering - Thursday",
+      "receivedAt": "2026-10-28T13:10:00Z",
+      "bodyText": "Hi Alex,\n\nArkwright Engineering have asked to meet you for the Placement Engineer role. I've booked you in for:\n\nThursday 5 November 2026, 15:30 - 16:15\nArkwright Engineering, Unit 4 Foundry Park, Sheffield S9\n\nDress code is smart casual. Ask for Mark Doyle at reception. I'll call you tomorrow to go through likely questions.\n\nCheers,\n\n--\nJordan Ellis\nStudent Placements Consultant | TalentBridge Recruitment\nT: 020 7946 0211 | www.talentbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Arkwright Engineering",
+    "expectedStage": "INTERVIEW"
+  },
+  {
+    "id": "rec-assessment-centre",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-032",
+      "threadId": "eval-thread-032",
+      "internetMessageId": "<eval-032@mail.example>",
+      "from": "Sam Whitaker <sam.whitaker@gradbridge.example>",
+      "subject": "Final stage - Northwind Bank assessment centre",
+      "receivedAt": "2026-10-27T18:02:00Z",
+      "bodyText": "Hi Alex,\n\nBrilliant news. Northwind Bank has invited you to their final-round assessment centre for the Technology Placement Year role on Tuesday 17 November 2026 in Leeds (arrive 08:30 for a 09:00 start; finish approx. 15:30).\n\nYou'll have a group exercise, a technical interview and a short presentation. I'll send a prep pack tonight.\n\nPlease confirm by return that you can make it.\n\n--\nSam Whitaker\nPlacement Resourcer | GradBridge\nT: 020 7946 0305 | www.gradbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Northwind Bank",
+    "expectedStage": "ASSESSMENT_CENTRE"
+  },
+  {
+    "id": "rec-offer",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-033",
+      "threadId": "eval-thread-033",
+      "internetMessageId": "<eval-033@mail.example>",
+      "from": "Aisha Rahman <aisha@careerlink-agency.example>",
+      "subject": "Offer from Solent Marine!",
+      "receivedAt": "2026-10-21T17:45:00Z",
+      "bodyText": "Hi Alex,\n\nI'm delighted to tell you that Solent Marine has offered you the Marine Engineering Placement for 2027 (salary GBP 22,500 pro rata). The formal paperwork will come from their HR team within a couple of days.\n\nThey'd like an answer within a week. Call me when you have a moment and we can talk it through.\n\nCongratulations!\n\n--\nAisha Rahman\nSenior Consultant | CareerLink Agency\nT: 020 7946 0118 | www.careerlink-agency.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Solent Marine",
+    "expectedStage": "OFFER"
+  },
+  {
+    "id": "rec-rejected",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-034",
+      "threadId": "eval-thread-034",
+      "internetMessageId": "<eval-034@mail.example>",
+      "from": "Sam Whitaker <sam.whitaker@gradbridge.example>",
+      "subject": "Feedback from Vantage Telecom",
+      "receivedAt": "2026-10-22T15:30:00Z",
+      "bodyText": "Hi Alex,\n\nI heard back from Vantage Telecom this afternoon about the Placement Student - Systems Integration role. Sadly they won't be taking your application further; they went with a candidate who had prior telecoms exposure. Their feedback on your interview was very positive, so don't be discouraged.\n\nI have two other placement roles that might suit you and will send details tomorrow.\n\nSpeak soon,\n\n--\nSam Whitaker\nPlacement Resourcer | GradBridge\nT: 020 7946 0305 | www.gradbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Vantage Telecom",
+    "expectedStage": "REJECTED"
+  },
+  {
+    "id": "rec-withdrawn",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-035",
+      "threadId": "eval-thread-035",
+      "internetMessageId": "<eval-035@mail.example>",
+      "from": "Jordan Ellis <jordan.ellis@talentbridge.example>",
+      "subject": "Re: Withdrawing from Harbourline Logistics",
+      "receivedAt": "2026-10-20T12:30:00Z",
+      "bodyText": "Hi Alex,\n\nUnderstood - I've told Harbourline Logistics that you're withdrawing from the Operations Placement process now that you've accepted elsewhere. They were very gracious about it and have closed your application.\n\nGood luck with the new role, and keep in touch.\n\n> On 20 Oct 2026, Alex Morgan wrote:\n> Hi Jordan, I've accepted another placement so please withdraw me from Harbourline.\n\n--\nJordan Ellis\nStudent Placements Consultant | TalentBridge Recruitment\nT: 020 7946 0211 | www.talentbridge.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Harbourline Logistics",
+    "expectedStage": "WITHDRAWN"
+  },
+  {
+    "id": "rec-internship-submitted",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-036",
+      "threadId": "eval-thread-036",
+      "internetMessageId": "<eval-036@mail.example>",
+      "from": "Maya Chen <maya.chen@summerinterns.example>",
+      "subject": "Your CV has been submitted to Quillon Insurance",
+      "receivedAt": "2026-10-15T09:05:00Z",
+      "bodyText": "Hi Alex,\n\nConfirming that I have submitted your CV and cover letter to Quillon Insurance for the Summer Internship 2027 - Claims Analytics position you asked about. They typically respond within two weeks.\n\nBest,\n\n--\nMaya Chen\nInternship Coordinator | SummerInterns\nT: 020 7946 0440 | www.summerinterns.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Quillon Insurance",
+    "expectedStage": "APPLIED"
+  }
+]

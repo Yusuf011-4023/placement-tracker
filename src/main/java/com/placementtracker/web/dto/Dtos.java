@@ -1,0 +1,81 @@
+package com.placementtracker.web.dto;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+
+import tools.jackson.databind.JsonNode;
+
+/** JSON shapes of the local API. */
+public final class Dtos {
+
+	private Dtos() {
+	}
+
+	public enum Urgency { OVERDUE, URGENT, SOON, LATER }
+
+	/** {@code lastConnectError}: why the last Connect press failed (null while one runs or after success). */
+	public record Account(String account, boolean connected, String status, Instant lastSuccessAt, String error,
+			String lastConnectError) {
+	}
+
+	public record ChartSlice(String stage, int count) {
+	}
+
+	public record NeedsAction(long actionId, long applicationId, String company, String role, String description,
+			OffsetDateTime dueAt, Urgency urgency) {
+	}
+
+	/**
+	 * {@code applicationCompany}/{@code applicationStage}: the matched application, when there is one.
+	 * {@code candidateIds}: the applications an ambiguous match was torn between (empty otherwise).
+	 */
+	public record PleaseCheck(long reviewId, String reason, Long applicationId, String applicationCompany,
+			String applicationStage, List<Long> candidateIds, String subject, String from, Instant receivedAt,
+			String webLink, JsonNode suggestion) {
+	}
+
+	public record Card(long applicationId, String company, String role, String stage, int interviewRounds,
+			boolean hasOpenAction, Urgency urgency) {
+	}
+
+	/** {@code waiting}: emails PENDING or FAILED. The UI warns when lastErrorAt is after lastSuccessAt. */
+	public record Ai(boolean configured, String lastError, Instant lastErrorAt, Instant lastSuccessAt, int waiting) {
+	}
+
+	public record Dashboard(List<Account> accounts, boolean aiConfigured, Ai ai, boolean syncing,
+			List<ChartSlice> chart, List<NeedsAction> needsAction, List<PleaseCheck> pleaseCheck,
+			Map<String, List<Card>> board) {
+	}
+
+	public record ActionView(long id, String description, OffsetDateTime dueAt, String status, String stage) {
+	}
+
+	public record EmailRef(String subject, String webLink) {
+	}
+
+	public record HistoryEntry(String fromStage, String toStage, Instant changedAt, String source, EmailRef email) {
+	}
+
+	public record ApplicationDetail(long id, String company, String role, String stage, int interviewRounds,
+			LocalDate appliedOn, String notes, List<String> lockedFields, List<ActionView> actions,
+			List<HistoryEntry> history) {
+	}
+
+	public record ApplicationSummary(long id, String company, String role, String stage) {
+	}
+
+	public record NewApplication(String company, String role, String stage, LocalDate appliedOn, String notes) {
+	}
+
+	public record NewAction(String description, OffsetDateTime dueAt) {
+	}
+
+	public record MergeRequest(Long sourceId) {
+	}
+
+	public record AttachRequest(Long applicationId) {
+	}
+}

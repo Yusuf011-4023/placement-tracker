@@ -1,0 +1,162 @@
+[
+  {
+    "id": "uni-not-submitted",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-020",
+      "threadId": "eval-thread-020",
+      "internetMessageId": "<eval-020@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Reminder: you have an unsubmitted application for Ironbridge Materials",
+      "receivedAt": "2026-10-28T09:00:00Z",
+      "bodyText": "Dear Alex,\n\nOur records show your application for 'Placement Year - Materials Scientist' at Ironbridge Materials is saved as a draft in MyCareer and has not been submitted.\n\nThe employer's deadline is 6 November 2026 at 12:00. Please log in and press Submit before then. Draft applications are not seen by employers.\n\nLog in: https://mycareer.brookfield-uni.ac.uk/applications/draft/9912\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Ironbridge Materials",
+    "expectedStage": "NOT_SUBMITTED"
+  },
+  {
+    "id": "uni-applied",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-021",
+      "threadId": "eval-thread-021",
+      "internetMessageId": "<eval-021@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Application submitted via MyCareer: Placement Analyst at Kestrel Capital",
+      "receivedAt": "2026-10-16T17:43:00Z",
+      "bodyText": "Dear Alex,\n\nYour application to Kestrel Capital for the vacancy 'Placement Analyst - Risk (12 months)' has been submitted successfully through the MyCareer portal and forwarded to the employer.\n\nVacancy ID: BU-VAC-20933\nSubmitted: 16 October 2026 18:42\n\nYou will be notified of any updates from the employer through the portal.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Kestrel Capital",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "uni-online-test",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-022",
+      "threadId": "eval-thread-022",
+      "internetMessageId": "<eval-022@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Action required: Online test for Lumen Retail Group placement",
+      "receivedAt": "2026-10-25T10:30:00Z",
+      "bodyText": "Dear Alex,\n\nLumen Retail Group has updated your application status in MyCareer to 'Online test invited'.\n\nPlease complete the situational judgement and numerical reasoning tests via the link in your MyCareer messages by 4 November 2026, 17:00.\n\nEmployer: Lumen Retail Group\nVacancy: Placement Year - Buying Assistant\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Lumen Retail Group",
+    "expectedStage": "ONLINE_TEST"
+  },
+  {
+    "id": "uni-interview",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-023",
+      "threadId": "eval-thread-023",
+      "internetMessageId": "<eval-023@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Interview booked - Oakridge Capital",
+      "receivedAt": "2026-10-27T15:00:00Z",
+      "bodyText": "Dear Alex,\n\nYour interview slot with Oakridge Capital has been confirmed in MyCareer.\n\nPosition: Placement Analyst - Equities\nDate and time: Friday 13 November 2026, 11:00\nLocation: Oakridge Capital, 25 Gresham Row, London EC2 (reception, 2nd floor)\nInterviewers: Ms R. Okafor and Mr D. Lindqvist\n\nPlease bring photo ID. To cancel or reschedule, contact the employer at least 48 hours before.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Oakridge Capital",
+    "expectedStage": "INTERVIEW"
+  },
+  {
+    "id": "uni-assessment-centre",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-024",
+      "threadId": "eval-thread-024",
+      "internetMessageId": "<eval-024@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Employer update: Halcyon Aerospace - assessment centre invitation",
+      "receivedAt": "2026-10-28T12:00:00Z",
+      "bodyText": "Dear Alex,\n\nHalcyon Aerospace has invited you to an assessment centre for the Placement Student - Avionics vacancy.\n\nDate: 2 December 2026, 08:45 - 16:30\nVenue: Halcyon Aerospace Training Campus, Bristol BS34\n\nPlease accept via MyCareer by 20 November 2026. The employer will email joining instructions.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Halcyon Aerospace",
+    "expectedStage": "ASSESSMENT_CENTRE"
+  },
+  {
+    "id": "uni-offer",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-025",
+      "threadId": "eval-thread-025",
+      "internetMessageId": "<eval-025@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Offer received through MyCareer: Pinecrest Health",
+      "receivedAt": "2026-10-24T09:50:00Z",
+      "bodyText": "Dear Alex,\n\nPinecrest Health has recorded an OFFER against your application for 'Placement - Clinical Data Analyst' (start date 5 July 2027).\n\nPlease log in to MyCareer to accept or decline. Your Placement Tutor has been informed. Remember that you must tell us about any offer you accept so your placement can be registered with your department.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Pinecrest Health",
+    "expectedStage": "OFFER"
+  },
+  {
+    "id": "uni-rejected",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-026",
+      "threadId": "eval-thread-026",
+      "internetMessageId": "<eval-026@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Application outcome: Zephyr Motors",
+      "receivedAt": "2026-10-20T14:30:00Z",
+      "bodyText": "Dear Alex,\n\nZephyr Motors has updated your application for 'Placement Year - Vehicle Dynamics' to the status: Not successful.\n\nThe employer has not provided feedback. If you would like help with your next applications, book a 1:1 appointment with a careers consultant through MyCareer.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Zephyr Motors",
+    "expectedStage": "REJECTED"
+  },
+  {
+    "id": "uni-withdrawn",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-027",
+      "threadId": "eval-thread-027",
+      "internetMessageId": "<eval-027@mail.example>",
+      "from": "Brookfield University Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Your application to Tessellate Software has been withdrawn",
+      "receivedAt": "2026-10-17T10:05:00Z",
+      "bodyText": "Dear Alex,\n\nWe confirm that, at your request, your application to Tessellate Software for 'Placement Developer (Cloud)' has been withdrawn in MyCareer and the employer has been notified.\n\nYou will not receive further updates about this vacancy.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Tessellate Software",
+    "expectedStage": "WITHDRAWN"
+  }
+]

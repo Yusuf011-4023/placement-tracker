@@ -1,0 +1,6 @@
+{"id":"m1","threadId":"t1","labelIds":["INBOX","CATEGORY_PROMOTIONS","UNREAD","SPAM"],"internalDate":"1760000000000",
+ "payload":{"mimeType":"multipart/mixed","headers":[{"name":"From","value":"Jobs <jobs@acme.com>"},{"name":"Subject","value":"Your application"},{"name":"Message-ID","value":"<abc@mail.acme.com>"}],
+  "parts":[{"mimeType":"multipart/alternative","parts":[
+    {"mimeType":"text/html","headers":[{"name":"Content-Type","value":"text/html; charset=UTF-8"}],"body":{"data":"PGh0bWw-PGJvZHk-PHA-SGVsbG88L3A-PHA-SFRNTCBvbmx5PGJyPmxpbmUgdHdvPC9wPjwvYm9keT48L2h0bWw-"}},
+    {"mimeType":"text/plain","headers":[{"name":"Content-Type","value":"text/plain; charset=UTF-8"}],"body":{"data":"SGVsbG8gcGxhaW4gYm9keSwgY2Fmw6k"}}]},
+   {"mimeType":"text/plain","filename":"cv.txt","body":{"attachmentId":"att1","data":"YXR0YWNobWVudCB0ZXh0"}}]}}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placement Tracker</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="screen">
+    <div class="bar">
+      <span>Placement Tracker</span>
+      <span class="tools">
+        <span id="last-checked">Last checked …</span>
+        <button class="btn" id="check-now" type="button">Check now</button>
+        <button class="btn" id="add" type="button">+ Add</button>
+        <a class="btn" href="setup.html">Setup</a>
+      </span>
+    </div>
+    <div id="banners"></div>
+    <div class="body">
+      <div class="top">
+        <div class="tile">
+          <p class="section-label">Your applications</p>
+          <div class="chart-row">
+            <div class="donut" id="donut">
+              <svg viewBox="-75 -75 150 150" width="150" height="150" role="img" aria-labelledby="donut-title">
+                <title id="donut-title">Applications by stage</title>
+              </svg>
+              <div class="centre"><b id="total">0</b><span>applications</span></div>
+            </div>
+            <ul class="legend" id="legend"></ul>
+          </div>
+        </div>
+        <div class="tile">
+          <p class="section-label" id="needs-label">Needs action</p>
+          <div id="needs"></div>
+        </div>
+      </div>
+
+      <div class="tile check" id="check" hidden>
+        <p class="section-label" id="check-label">Please check</p>
+        <div id="check-list"></div>
+      </div>
+
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tip" id="tip"></div>
+<div id="detail-root"></div>
+
+<dialog id="add-dialog">
+  <form method="dialog" id="add-form">
+    <h2>Add an application</h2>
+    <label class="field">Company <input name="company" required></label>
+    <label class="field">Role <input name="role"></label>
+    <label class="field">Stage <select name="stage" id="add-stage"></select></label>
+    <label class="field">Applied on <input name="appliedOn" type="date"></label>
+    <label class="field">Notes <textarea name="notes" rows="2"></textarea></label>
+    <div class="row">
+      <button class="btn" type="button" id="add-cancel">Cancel</button>
+      <button class="btn primary" type="submit">Add</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="edit-dialog">
+  <form method="dialog" id="edit-form">
+    <h2>Edit and confirm</h2>
+    <label class="field">Company <input name="company" required></label>
+    <label class="field">Role <input name="role"></label>
+    <label class="field">Stage <select name="stage" id="edit-stage"></select></label>
+    <div class="row">
+      <button class="btn" type="button" id="edit-cancel">Cancel</button>
+      <button class="btn primary" type="submit">Confirm</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="common.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

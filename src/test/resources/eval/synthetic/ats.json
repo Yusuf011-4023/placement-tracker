@@ -1,0 +1,202 @@
+[
+  {
+    "id": "ats-not-submitted",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-001",
+      "threadId": "eval-thread-001",
+      "internetMessageId": "<eval-001@mail.example>",
+      "from": "Alder & Finch Careers <noreply@greenhouse.io>",
+      "subject": "Finish your application to Alder & Finch",
+      "receivedAt": "2026-10-14T09:30:00Z",
+      "bodyText": "Hi Alex,\n\nYou started an application for the Industrial Placement Year - Software Engineering (2027) role at Alder & Finch but haven't submitted it yet.\n\nYour progress has been saved. Applications close on 12 November 2026 at 17:00 GMT, so pick up where you left off:\n\n[Continue my application] https://boards.greenhouse.io/alderfinch/jobs/4410021?gh_src=resume\n\nNeed help? Contact us at earlycareers@alderandfinch.example.\n\n--\nSent via Greenhouse. You are receiving this email because you applied through a Greenhouse-hosted job board.\nUnsubscribe from these notifications: https://app.greenhouse.io/unsubscribe/x8f2",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Alder & Finch",
+    "expectedStage": "NOT_SUBMITTED"
+  },
+  {
+    "id": "ats-applied-vendor-prominent",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-002",
+      "threadId": "eval-thread-002",
+      "internetMessageId": "<eval-002@mail.example>",
+      "from": "Workday <noreply@myworkday.com>",
+      "subject": "Workday: Thank you for applying",
+      "receivedAt": "2026-10-14T09:30:00Z",
+      "bodyText": "Workday\n\nThank you for applying\n\nDear Alex Morgan,\n\nYour application for the position R-20418 Year in Industry Student - Data Engineering has been received and is now being reviewed.\n\nBrightwell Energy appreciates your interest in joining our team. If your profile matches our requirements, a member of our early careers team will be in touch.\n\nYou can check the status of your application at any time by signing in to your candidate home page on Workday.\n\nKind regards,\nBrightwell Energy Early Careers\n\nThis is an automated message from Workday. Please do not reply to this email.\nWorkday, Inc. | 6110 Stoneridge Mall Road, Pleasanton, CA 94588",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Brightwell Energy",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "ats-applied-oracle",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-003",
+      "threadId": "eval-thread-003",
+      "internetMessageId": "<eval-003@mail.example>",
+      "from": "Halcyon Aerospace Recruitment <donotreply@oraclecloud.com>",
+      "subject": "We have received your application - Halcyon Aerospace",
+      "receivedAt": "2026-10-09T15:02:11Z",
+      "bodyText": "Dear Alex,\n\nThank you for submitting your application for Placement Student - Propulsion Systems (Ref: HA-PL-2027-044).\n\nWe will review your details and contact you if you are shortlisted. The process normally takes 3-4 weeks.\n\nPlease note: do not reply to this email, this mailbox is not monitored.\n\nHalcyon Aerospace Ltd. Registered in England and Wales No. 04412930.\nThis email and any attachments are confidential.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Halcyon Aerospace",
+    "expectedStage": "APPLIED"
+  },
+  {
+    "id": "ats-online-test-video",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-004",
+      "threadId": "eval-thread-004",
+      "internetMessageId": "<eval-004@mail.example>",
+      "from": "HireVue on behalf of Northwind Bank <no-reply@hirevue.com>",
+      "subject": "Northwind Bank: Complete your video interview",
+      "receivedAt": "2026-10-27T08:15:00Z",
+      "bodyText": "Hi Alex,\n\nNorthwind Bank has invited you to complete a one-way video interview as part of your application for the 2027 Technology Placement Year.\n\nYou will be asked 4 questions and have 3 minutes to answer each one. You can practise first. Please complete the interview by 6 November 2026 at 23:59 GMT.\n\nStart your HireVue interview: https://app.hirevue.com/candidates/interview/8d1f\nTest your camera and microphone before you begin. Best viewed in Chrome or Edge.\n\n(c) HireVue, Inc. 2026. Privacy Policy | Unsubscribe",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Northwind Bank",
+    "expectedStage": "ONLINE_TEST"
+  },
+  {
+    "id": "ats-interview",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-005",
+      "threadId": "eval-thread-005",
+      "internetMessageId": "<eval-005@mail.example>",
+      "from": "Corvus Analytics Talent <noreply@lever.co>",
+      "subject": "Interview invitation: Analytics Placement Student at Corvus Analytics",
+      "receivedAt": "2026-10-28T11:40:00Z",
+      "bodyText": "Hi Alex,\n\nThanks for applying for the Analytics Placement Student role. We'd like to invite you to a 45-minute video interview with Priya Nair (Senior Analyst) and Tom Baxter (Team Lead).\n\nProposed time: Tuesday 10 November 2026, 14:00 GMT, on Microsoft Teams. A link will follow once you confirm.\n\nPlease reply to confirm that this time works for you, or suggest an alternative.\n\nBest,\nCorvus Analytics Talent Team\n\nPowered by Lever | https://www.lever.co | Manage email preferences",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Corvus Analytics",
+    "expectedStage": "INTERVIEW"
+  },
+  {
+    "id": "ats-assessment-centre-virtual-event",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-006",
+      "threadId": "eval-thread-006",
+      "internetMessageId": "<eval-006@mail.example>",
+      "from": "Meridian Pharma Early Careers <noreply@successfactors.eu>",
+      "subject": "Your Meridian Pharma virtual event - next steps",
+      "receivedAt": "2026-10-26T13:20:00Z",
+      "bodyText": "Dear Alex,\n\nCongratulations on progressing in your application for the Industrial Placement - Quality Assurance role.\n\nWe would like to invite you to our virtual event on Thursday 19 November 2026 (09:30 - 15:00 GMT). The day will include a group exercise, a case study presentation and a panel conversation with our placement managers.\n\nPlease confirm your attendance by 12 November using the link below.\nhttps://career5.successfactors.eu/sfcareer/jobreqcareer?jobId=7711&event=confirm\n\nSAP SuccessFactors. This is a system generated email, please do not reply.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Meridian Pharma",
+    "expectedStage": "ASSESSMENT_CENTRE"
+  },
+  {
+    "id": "ats-offer",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-007",
+      "threadId": "eval-thread-007",
+      "internetMessageId": "<eval-007@mail.example>",
+      "from": "Tessellate Software <noreply@smartrecruiters.com>",
+      "subject": "Good news from Tessellate Software",
+      "receivedAt": "2026-10-22T16:05:00Z",
+      "bodyText": "Dear Alex,\n\nWe were really impressed with you throughout our selection process and are delighted to offer you a place on our 2027 Software Engineering Placement (12 months, starting 6 July 2027).\n\nA formal offer letter and contract are attached to a separate email from our HR team. Please accept or decline via the link in that email within 10 working days.\n\nCongratulations, and we hope to welcome you soon!\n\nThe Tessellate Software Early Careers Team\nSent with SmartRecruiters | Unsubscribe",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Tessellate Software",
+    "expectedStage": "OFFER"
+  },
+  {
+    "id": "ats-rejected-polite-no-unfortunately",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-008",
+      "threadId": "eval-thread-008",
+      "internetMessageId": "<eval-008@mail.example>",
+      "from": "Harbourline Logistics <noreply@myworkday.com>",
+      "subject": "Your application to Harbourline Logistics",
+      "receivedAt": "2026-10-21T10:10:00Z",
+      "bodyText": "Dear Alex,\n\nThank you very much for the time and care you put into your application for our Supply Chain Placement role, and for speaking with us last week. We genuinely enjoyed learning about your projects.\n\nAfter thoughtful consideration, we have decided to progress with other candidates whose experience more closely matches our current needs on this occasion. This is in no way a reflection of your potential, and we would be glad if you applied again in the future.\n\nWe wish you every success with your studies and your search for a placement.\n\nWith best wishes,\nHarbourline Logistics Talent Acquisition\n\nThis is an automated message from Workday. Please do not reply to this email.\nWorkday, Inc. | 6110 Stoneridge Mall Road, Pleasanton, CA 94588",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Harbourline Logistics",
+    "expectedStage": "REJECTED"
+  },
+  {
+    "id": "ats-withdrawn",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-009",
+      "threadId": "eval-thread-009",
+      "internetMessageId": "<eval-009@mail.example>",
+      "from": "Quillon Insurance <noreply@taleo.net>",
+      "subject": "Application withdrawn - Quillon Insurance",
+      "receivedAt": "2026-10-18T12:00:00Z",
+      "bodyText": "Dear Alex Morgan,\n\nAs requested, we have withdrawn your application for the Actuarial Placement Student (Req ID 55120) at Quillon Insurance. No further action is needed from you.\n\nIf you change your mind, you are welcome to apply for other vacancies on our careers site while they remain open.\n\nQuillon Insurance Group plc\nPowered by Oracle Taleo. This message was generated automatically.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Quillon Insurance",
+    "expectedStage": "WITHDRAWN"
+  },
+  {
+    "id": "ats-applied-internship-icims",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-010",
+      "threadId": "eval-thread-010",
+      "internetMessageId": "<eval-010@mail.example>",
+      "from": "Ferrous Rail <no-reply@icims.com>",
+      "subject": "Application received: Summer Internship 2027 - Signalling",
+      "receivedAt": "2026-10-07T19:44:00Z",
+      "bodyText": "Hello Alex,\n\nWe confirm receipt of your application to the Summer Internship 2027 - Signalling Engineering programme at Ferrous Rail.\n\nYour candidate reference is FR-INT-30871. Applications are reviewed on a rolling basis, so please apply early rather than waiting for the closing date.\n\nFerrous Rail Ltd | Careers Team\nPowered by iCIMS",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "YES",
+    "expectedCompany": "Ferrous Rail",
+    "expectedStage": "APPLIED"
+  }
+]

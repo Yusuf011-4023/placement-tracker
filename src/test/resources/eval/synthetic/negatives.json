@@ -1,0 +1,285 @@
+[
+  {
+    "id": "neg-job-alert-indeed",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-037",
+      "threadId": "eval-thread-037",
+      "internetMessageId": "<eval-037@mail.example>",
+      "from": "Indeed <alert@indeed.com>",
+      "subject": "5 new placement jobs in Leeds",
+      "receivedAt": "2026-10-28T06:00:00Z",
+      "bodyText": "Placement year jobs in Leeds - new today\n\n1. Placement Student - Finance | Oakridge Capital | Leeds\n2. Industrial Placement - Engineering | Arkwright Engineering | Leeds\n3. Year in Industry - Marketing | Lumen Retail Group | Leeds\n\nSee all jobs: https://uk.indeed.com/alert/view\nYou are receiving this job alert because you created an alert for 'placement year'.\nUnsubscribe from this alert | Indeed, Inc.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-jobs-you-might-like-linkedin",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-038",
+      "threadId": "eval-thread-038",
+      "internetMessageId": "<eval-038@mail.example>",
+      "from": "LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>",
+      "subject": "Jobs you might be interested in: Software Engineer Intern at Tessellate Software and more",
+      "receivedAt": "2026-10-27T07:30:00Z",
+      "bodyText": "Jobs recommended for you, Alex\n\nSoftware Engineer Intern - Tessellate Software - London\nData Science Placement - Corvus Analytics - Remote\nIndustrial Placement - Mechanical - Arkwright Engineering - Sheffield\n\nBased on your profile and search history.\n[See all jobs]\n\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-generic-recruiter-outreach",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-039",
+      "threadId": "eval-thread-039",
+      "internetMessageId": "<eval-039@mail.example>",
+      "from": "Dan Foster <dan.foster@apexsearch.example>",
+      "subject": "Exciting opportunities - let's connect",
+      "receivedAt": "2026-10-16T10:00:00Z",
+      "bodyText": "Hi Alex,\n\nI came across your profile and was impressed by your background. I work with a number of leading employers across tech, finance and engineering and am always keen to speak to talented students.\n\nWould you be open to a quick catch-up call next week to talk about what you're looking for? No specific role in mind right now - I'd just like to get to know you for future opportunities.\n\nBest regards,\n\n--\nDan Foster\nTalent Partner | Apex Search\nT: 020 7946 0502 | www.apexsearch.example\nThis email and any attachments are confidential and intended solely for the addressee.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-careers-fair-invite",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-040",
+      "threadId": "eval-thread-040",
+      "internetMessageId": "<eval-040@mail.example>",
+      "from": "Brookfield Careers Events <events@careers.brookfield-uni.ac.uk>",
+      "subject": "Autumn Careers Fair - 18 November, Great Hall",
+      "receivedAt": "2026-10-12T09:00:00Z",
+      "bodyText": "Dear Alex,\n\nYou're invited to the Brookfield Autumn Careers Fair on Wednesday 18 November 2026, 11:00 - 16:00 in the Great Hall.\n\nOver 80 employers, including Northwind Bank, Halcyon Aerospace and Kestrel Defence, will be there to talk about placements, internships and graduate roles. Book your free ticket on MyCareer.\n\nDress smartly and bring copies of your CV.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-graduate-scheme-application",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-041",
+      "threadId": "eval-thread-041",
+      "internetMessageId": "<eval-041@mail.example>",
+      "from": "Northwind Bank Graduate Careers <noreply@myworkday.com>",
+      "subject": "Application received - Northwind Bank Graduate Programme 2027",
+      "receivedAt": "2026-10-05T12:00:00Z",
+      "bodyText": "Dear Alex,\n\nThank you for applying to the Northwind Bank Graduate Programme (Technology), a permanent full-time role starting September 2027.\n\nYour application has been received. We will contact you about the next stage if you are shortlisted.\n\nKind regards,\nNorthwind Bank Graduate Recruitment\n\nThis is an automated message from Workday. Please do not reply to this email.\nWorkday, Inc. | 6110 Stoneridge Mall Road, Pleasanton, CA 94588",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-graduate-scheme-rejection",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-042",
+      "threadId": "eval-thread-042",
+      "internetMessageId": "<eval-042@mail.example>",
+      "from": "Lumen Retail Group <noreply@greenhouse.io>",
+      "subject": "Your Lumen Retail Group Graduate Scheme application",
+      "receivedAt": "2026-10-14T08:40:00Z",
+      "bodyText": "Dear Alex,\n\nThank you for applying to the Lumen Retail Group Graduate Leadership Scheme (full-time, permanent, 2027 intake). Unfortunately we will not be taking your application any further.\n\nBest wishes,\nLumen Retail Group Graduate Team\n\n--\nSent via Greenhouse. You are receiving this email because you applied through a Greenhouse-hosted job board.\nUnsubscribe from these notifications: https://app.greenhouse.io/unsubscribe/x8f2",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-part-time-job",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-043",
+      "threadId": "eval-thread-043",
+      "internetMessageId": "<eval-043@mail.example>",
+      "from": "Pinecone Cafe <jobs@pinecone-cafes.example>",
+      "subject": "Thanks for applying - Weekend Barista (part-time)",
+      "receivedAt": "2026-10-10T16:00:00Z",
+      "bodyText": "Hi Alex,\n\nThanks for your application for the part-time Weekend Barista role at Pinecone Cafe, Brookfield High Street (Sat & Sun, 10 hours per week).\n\nOur manager will be in touch to arrange an informal chat about the role.\n\nPinecone Cafes Ltd",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-newsletter",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-044",
+      "threadId": "eval-thread-044",
+      "internetMessageId": "<eval-044@mail.example>",
+      "from": "Bright Network <newsletter@brightnetwork.co.uk>",
+      "subject": "This week: 5 tips for acing your placement interview",
+      "receivedAt": "2026-10-26T08:00:00Z",
+      "bodyText": "Your weekly Bright Network digest\n\nTOP READS\n- 5 tips for acing your placement interview\n- How to write a cover letter that gets noticed\n- Meet the students who landed year in industry roles at top employers\n\nUPCOMING WEBINARS\n- Demystifying assessment centres (Thurs, 7pm)\n\n\nBright Network, 3rd Floor, 40 Bowling Green Lane, London.\nYou are receiving this because you have a Bright Network account.\nUnsubscribe | Manage preferences | View in browser",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-shopping-promo-offer",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-045",
+      "threadId": "eval-thread-045",
+      "internetMessageId": "<eval-045@mail.example>",
+      "from": "Threadbare Outlet <offers@threadbare-outlet.example>",
+      "subject": "Exclusive offer: 30% off everything this weekend",
+      "receivedAt": "2026-10-23T09:00:00Z",
+      "bodyText": "Hi Alex,\n\nOur biggest offer of the season ends Sunday! Use code WEEKEND30 at checkout for 30% off all jackets, jumpers and accessories. Student discount also applies - the best offer you will find.\n\nShop now: https://threadbare-outlet.example/sale\n\nYou are receiving this because you subscribed to Threadbare Outlet emails.\nUnsubscribe | View in browser | Threadbare Outlet Ltd, 12 Mill Lane",
+      "webLink": null,
+      "labels": [
+        "INBOX",
+        "CATEGORY_PROMOTIONS"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-bank-credit-card-application",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-046",
+      "threadId": "eval-thread-046",
+      "internetMessageId": "<eval-046@mail.example>",
+      "from": "Calder Bank <noreply@calderbank.example>",
+      "subject": "Your application for a Calder Student Credit Card",
+      "receivedAt": "2026-10-08T14:20:00Z",
+      "bodyText": "Dear Mr Aslam,\n\nThank you for applying for a Calder Student Credit Card. We are reviewing your application and will write to you within 7 working days. We may carry out a credit check.\n\nYour application reference is CC-8821904. You can track the progress of your application in Calder Online Banking.\n\nCalder Bank plc is authorised by the Prudential Regulation Authority. Credit is subject to status.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-social-notification-interview",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-047",
+      "threadId": "eval-thread-047",
+      "internetMessageId": "<eval-047@mail.example>",
+      "from": "Quora Digest <digest@quora.example>",
+      "subject": "Your interview question got 3 new answers",
+      "receivedAt": "2026-10-21T19:00:00Z",
+      "bodyText": "Hi Alex,\n\nYour question \"How do I prepare for a placement interview at a bank?\" has 3 new answers.\n\nTop answer by Chris M.: \"Practise explaining your CV out loud and prepare two examples for each competency...\"\n\nAnswer, comment or follow other questions about job interview preparation.\nUnsubscribe | Notification settings",
+      "webLink": null,
+      "labels": [
+        "INBOX",
+        "CATEGORY_SOCIAL"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-linkedin-who-viewed",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-048",
+      "threadId": "eval-thread-048",
+      "internetMessageId": "<eval-048@mail.example>",
+      "from": "LinkedIn <notifications-noreply@linkedin.com>",
+      "subject": "Alex, 4 recruiters viewed your profile this week",
+      "receivedAt": "2026-10-25T05:30:00Z",
+      "bodyText": "See who's viewed your profile\n\n4 people from companies like Tessellate Software and Marlow Consulting viewed your profile.\n\nUpgrade to Premium to see everyone, or open LinkedIn to see more.\n\nYou are receiving LinkedIn notification emails.\nUnsubscribe: https://www.linkedin.com/e/v2?e=abc&t=lun\nHelp: https://www.linkedin.com/help/linkedin\n(c) 2026 LinkedIn Corporation, 1000 West Maude Avenue, Sunnyvale, CA 94085.",
+      "webLink": null,
+      "labels": [
+        "INBOX",
+        "CATEGORY_SOCIAL"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-uni-careers-workshop",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-049",
+      "threadId": "eval-thread-049",
+      "internetMessageId": "<eval-049@mail.example>",
+      "from": "Brookfield Careers <noreply@careers.brookfield-uni.ac.uk>",
+      "subject": "Book now: CV clinic and mock assessment centre workshop",
+      "receivedAt": "2026-10-27T09:00:00Z",
+      "bodyText": "Dear Alex,\n\nOur Careers & Employability Service is running a CV clinic (Tuesday 3 November) and a mock assessment centre practice session (Thursday 12 November). Both are open to all penultimate-year students applying for placements.\n\nPlaces are limited - reserve yours on MyCareer.\n\n-----\nBrookfield University Careers & Employability Service | MyCareer portal\nThis message was sent from an unattended address. To manage notifications, update your MyCareer profile.",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  },
+  {
+    "id": "neg-recruiter-job-spec-blast",
+    "email": {
+      "account": "GMAIL",
+      "messageId": "eval-050",
+      "threadId": "eval-thread-050",
+      "internetMessageId": "<eval-050@mail.example>",
+      "from": "Emma Lowe <emma@orbitstaffing.example>",
+      "subject": "Hot jobs this week: finance & tech vacancies",
+      "receivedAt": "2026-10-19T08:30:00Z",
+      "bodyText": "Hi there,\n\nCheck out our hottest vacancies this week:\n\n* Senior Java Developer - Reading - up to GBP 75k\n* Finance Business Partner - Birmingham\n* Graduate Software Engineer (permanent) - Cambridge\n\nKnow someone who'd be perfect? Refer them and get a GBP 250 voucher. Forward this to your friends!\n\nOrbit Staffing Ltd | Unsubscribe",
+      "webLink": null,
+      "labels": [
+        "INBOX"
+      ]
+    },
+    "expectedRelevance": "NO",
+    "expectedCompany": null,
+    "expectedStage": null
+  }
+]
