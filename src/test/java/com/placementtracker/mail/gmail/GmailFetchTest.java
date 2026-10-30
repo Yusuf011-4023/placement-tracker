@@ -6,10 +6,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,7 +32,9 @@ import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.google.api.services.gmail.Gmail;
 import com.placementtracker.config.DataDir;
 import com.placementtracker.config.TrackerProperties;
+import com.placementtracker.mail.MailAuthException;
 import com.placementtracker.mail.MailMessage;
+import com.placementtracker.mail.MailSourceException;
 
 class GmailFetchTest {
 
@@ -34,9 +43,11 @@ class GmailFetchTest {
 	@TempDir
 	Path tmp;
 
-	private final List<String> fetched = java.util.Collections.synchronizedList(new ArrayList<>());
-	private final java.util.Map<String, Integer> failIds = new java.util.concurrent.ConcurrentHashMap<>();
-	private volatile java.util.concurrent.CountDownLatch gate; // when set, each get waits here (up to 2 s)
+	private final List<String> fetched = Collections.synchronizedList(new ArrayList<>());
+	private final Map<String, Integer> failIds = new ConcurrentHashMap<>();
+	private final AtomicInteger inFlight = new AtomicInteger();
+	private final AtomicInteger maxInFlight = new AtomicInteger();
+	private volatile CountDownLatch gate; // when set, each get waits here (up to 2 s)
 	private int failAfter = Integer.MAX_VALUE; // messages.get fails for mN with N above this
 	private int failStatus = 500;
 
@@ -91,31 +102,37 @@ class GmailFetchTest {
 	/** Records the get, waits on the gate if one is set, and returns a forced failure status for the id or null. */
 	private Integer onGet(String id) {
 		fetched.add(id);
-		java.util.concurrent.CountDownLatch g = gate;
+		CountDownLatch g = gate;
 		if (g != null) {
+			int now = inFlight.incrementAndGet();
+			maxInFlight.accumulateAndGet(now, Math::max);
 			g.countDown();
 			try {
-				g.await(2, java.util.concurrent.TimeUnit.SECONDS);
+				g.await(2, TimeUnit.SECONDS); // opens once 4 gets are inside at the same time
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
+			}
+			finally {
+				inFlight.decrementAndGet();
 			}
 		}
 		return failIds.get(id);
 	}
 
-	private static final Instant SINCE =Instant.parse("2026-06-01T00:00:00Z");
+	private static final Instant SINCE = Instant.parse("2026-06-01T00:00:00Z");
 
 	@Test
 	void fetchesBodiesConcurrently() throws Exception {
 		GmailMailSource source = source(100);
-		gate = new java.util.concurrent.CountDownLatch(4);
+		gate = new CountDownLatch(4);
 		long start = System.nanoTime();
 
 		List<MailMessage> batch = source.fetchSince(gmail(8), SINCE, id -> false);
 
-		// sequential would wait the full 2 s on each of the first 3 gets before the latch opens
-		assertThat(java.time.Duration.ofNanos(System.nanoTime() - start)).isLessThan(java.time.Duration.ofSeconds(6));
+		// a sequential fetch never has more than one get in flight, whatever the machine speed
+		assertThat(maxInFlight.get()).isGreaterThanOrEqualTo(4);
+		assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(15)); // hang guard
 		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1", "m2", "m3", "m4", "m5", "m6", "m7",
 				"m8");
 	}
@@ -146,7 +163,7 @@ class GmailFetchTest {
 		failIds.put("m1", 500);
 
 		assertThatThrownBy(() -> source.fetchSince(gmail(5), SINCE, id -> false))
-				.isInstanceOf(com.placementtracker.mail.MailSourceException.class);
+				.isInstanceOf(MailSourceException.class);
 	}
 
 	@Test
@@ -155,7 +172,7 @@ class GmailFetchTest {
 		failIds.put("m4", 401);
 
 		assertThatThrownBy(() -> source.fetchSince(gmail(5), SINCE, id -> false))
-				.isInstanceOf(com.placementtracker.mail.MailAuthException.class);
+				.isInstanceOf(MailAuthException.class);
 	}
 
 	@Test
@@ -210,7 +227,7 @@ class GmailFetchTest {
 		failAfter = 0;
 
 		assertThatThrownBy(() -> source.fetchSince(gmail(5), Instant.parse("2026-06-01T00:00:00Z"), id -> false))
-				.isInstanceOf(com.placementtracker.mail.MailSourceException.class);
+				.isInstanceOf(MailSourceException.class);
 	}
 
 	@Test
@@ -220,6 +237,6 @@ class GmailFetchTest {
 		failStatus = 401;
 
 		assertThatThrownBy(() -> source.fetchSince(gmail(20), Instant.parse("2026-06-01T00:00:00Z"), id -> false))
-				.isInstanceOf(com.placementtracker.mail.MailAuthException.class);
+				.isInstanceOf(MailAuthException.class);
 	}
 }
