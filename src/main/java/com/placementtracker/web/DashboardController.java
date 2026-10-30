@@ -25,6 +25,7 @@ import com.placementtracker.classify.EmailClassifier;
 import com.placementtracker.mail.EmailRecord;
 import com.placementtracker.mail.EmailRepository;
 import com.placementtracker.review.ReviewItem;
+import com.placementtracker.sync.SyncService;
 import com.placementtracker.review.ReviewRepository;
 import com.placementtracker.web.dto.Dtos.Ai;
 import com.placementtracker.web.dto.Dtos.Card;
@@ -53,12 +54,13 @@ public class DashboardController {
 	private final AiHealth aiHealth;
 	private final AccountViews accounts;
 	private final SyncRunner syncRunner;
+	private final SyncService syncService;
 	private final Clock clock;
 	private final ObjectMapper json;
 
 	public DashboardController(ApplicationRepository apps, ActionRepository actions, ReviewRepository reviews,
 			EmailRepository emails, EmailClassifier classifier, AiHealth aiHealth, AccountViews accounts,
-			SyncRunner syncRunner, Clock clock, ObjectMapper json) {
+			SyncRunner syncRunner, SyncService syncService, Clock clock, ObjectMapper json) {
 		this.apps = apps;
 		this.actions = actions;
 		this.reviews = reviews;
@@ -67,6 +69,7 @@ public class DashboardController {
 		this.aiHealth = aiHealth;
 		this.accounts = accounts;
 		this.syncRunner = syncRunner;
+		this.syncService = syncService;
 		this.clock = clock;
 		this.json = json;
 	}
@@ -83,7 +86,8 @@ public class DashboardController {
 		AiHealth.Snapshot health = aiHealth.snapshot();
 		Ai ai = new Ai(aiConfigured, health.lastError(), health.lastErrorAt(), health.lastSuccessAt(),
 				emails.countWaiting());
-		return new Dashboard(accounts.list(), aiConfigured, ai, syncRunner.isSyncing(), chart(all),
+		return new Dashboard(accounts.list(), aiConfigured, ai,
+				syncRunner.isSyncing() || syncService.isRunning(), chart(all),
 				needsAction(open, byId, now), pleaseCheck(byId), board(all, open, now));
 	}
 

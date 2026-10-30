@@ -427,6 +427,26 @@ class SyncServiceTest {
 		assertThat(gmail.sinceCalls.size()).isLessThanOrEqualTo(2);
 	}
 
+	@Test
+	void isRunningIsTrueOnlyDuringSyncAll() {
+		boolean[] during = new boolean[1];
+		SyncService[] svc = new SyncService[1];
+		gmail.add(msg(MailAccount.GMAIL, "r1", "<r1@x>", "Application received", Instant.parse("2026-09-01T10:00:00Z")));
+		svc[0] = service(new FakeMailSource(MailAccount.GMAIL) {
+			@Override
+			public List<MailMessage> fetchSince(Instant since) {
+				during[0] = svc[0].isRunning();
+				return List.of();
+			}
+		});
+
+		assertThat(svc[0].isRunning()).isFalse();
+		svc[0].syncAll();
+
+		assertThat(during[0]).isTrue();
+		assertThat(svc[0].isRunning()).isFalse();
+	}
+
 	// ---- helpers ----
 
 	int count(String table) {

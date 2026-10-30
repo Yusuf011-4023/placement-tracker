@@ -1,6 +1,7 @@
 package com.placementtracker.mail.gmail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -34,6 +35,8 @@ class GmailFetchTest {
 	Path tmp;
 
 	private final List<String> fetched = new ArrayList<>();
+	private int failAfter = Integer.MAX_VALUE; // messages.get fails for mN with N above this
+	private int failStatus = 500;
 
 	/** A fake Gmail with m1..mTotal; mN is received N seconds after BASE, and list returns newest first. */
 	private Gmail gmail(int total) {
@@ -54,6 +57,10 @@ class GmailFetchTest {
 						else {
 							String id = path.substring(path.lastIndexOf('/') + 1);
 							fetched.add(id);
+							if (Integer.parseInt(id.substring(1)) > failAfter) {
+								return new MockLowLevelHttpResponse().setStatusCode(failStatus)
+										.setContentType("application/json").setContent("{\"error\":{\"code\":" + failStatus + ",\"message\":\"x\"}}");
+							}
 							long ms = BASE + Long.parseLong(id.substring(1)) * 1000;
 							body = "{\"id\":\"" + id + "\",\"threadId\":\"t\",\"internalDate\":\"" + ms
 									+ "\",\"payload\":{\"headers\":[]}}";
@@ -99,5 +106,35 @@ class GmailFetchTest {
 		// skipped ids never reach messages.get and do not count toward the batch limit
 		assertThat(fetched).doesNotContainAnyElementsOf(stored);
 		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m4", "m5", "m6", "m7", "m8");
+	}
+
+	@Test
+	void midBatchFailureReturnsFetchedSoFar() throws Exception {
+		GmailMailSource source = source(10);
+		failAfter = 4; // m5 onwards fail with a 500
+
+		List<MailMessage> batch = source.fetchSince(gmail(20), Instant.parse("2026-06-01T00:00:00Z"), id -> false);
+
+		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1", "m2", "m3", "m4");
+		assertThat(batch.size()).isLessThan(source.batchLimit()); // so the sync loop stops cleanly
+	}
+
+	@Test
+	void failureBeforeAnyMessageIsStillThrown() throws Exception {
+		GmailMailSource source = source(10);
+		failAfter = 0;
+
+		assertThatThrownBy(() -> source.fetchSince(gmail(5), Instant.parse("2026-06-01T00:00:00Z"), id -> false))
+				.isInstanceOf(com.placementtracker.mail.MailSourceException.class);
+	}
+
+	@Test
+	void authFailureMidBatchStillThrows() throws Exception {
+		GmailMailSource source = source(10);
+		failAfter = 4;
+		failStatus = 401;
+
+		assertThatThrownBy(() -> source.fetchSince(gmail(20), Instant.parse("2026-06-01T00:00:00Z"), id -> false))
+				.isInstanceOf(com.placementtracker.mail.MailAuthException.class);
 	}
 }

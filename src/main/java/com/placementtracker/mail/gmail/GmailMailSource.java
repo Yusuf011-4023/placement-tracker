@@ -247,10 +247,18 @@ public class GmailMailSource implements MailSource {
 					throttle.acquire();
 					out.add(GmailMessageMapper.toMailMessage(get(gmail, id)));
 				}
-				catch (HttpResponseException e) {
-					if (e.getStatusCode() != 404) { // 404: deleted between list and get
+				catch (IOException e) {
+					if (e instanceof HttpResponseException h && h.getStatusCode() == 404) {
+						continue; // deleted between list and get
+					}
+					if (out.isEmpty()) {
 						throw e;
 					}
+					translate(e); // an auth failure is thrown now, never hidden in a partial result
+					// Keep what was fetched: returning fewer than batchLimit ends the sync loop cleanly, the
+					// high-water mark moves to the newest of these, and the next run meets the error again.
+					log.warn("Gmail fetch stopped after {} messages: {}", out.size(), e.getMessage());
+					break;
 				}
 			}
 		}

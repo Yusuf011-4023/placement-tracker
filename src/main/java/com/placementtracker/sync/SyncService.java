@@ -61,6 +61,7 @@ public class SyncService {
 	private final FailureRecorder failures;
 	private final AiHealth aiHealth;
 	private final TrackerProperties props;
+	private final java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean();
 
 	/** Spring constructor: tolerates there being no MailSource beans yet. */
 	@Autowired
@@ -92,7 +93,24 @@ public class SyncService {
 	 * newer one just because it sat in the backlog. A concurrent caller waits for the running pass, then runs its own
 	 * (everything is idempotent).
 	 */
-	public synchronized SyncReport syncAll() {
+	public SyncReport syncAll() {
+		synchronized (this) {
+			running.set(true);
+			try {
+				return runPass();
+			}
+			finally {
+				running.set(false);
+			}
+		}
+	}
+
+	/** True while a sync pass is running, whoever started it (schedule, first connect or Check now). */
+	public boolean isRunning() {
+		return running.get();
+	}
+
+	private SyncReport runPass() {
 		Run run = new Run(classifier.isConfigured());
 		for (MailSource source : sources) {
 			try {
