@@ -44,7 +44,7 @@ class ClaudeEmailClassifierTest {
 			 "confidence":0.93,"reason":"Test invitation"}""";
 
 	private final TrackerProperties props = new TrackerProperties(null, null,
-			new TrackerProperties.Ai("claude-haiku-5-5", 0.7, 3));
+			new TrackerProperties.Ai("claude-haiku-5-5", 0.7, 3), null);
 
 	private final List<StructuredMessageCreateParams<Classification>> captured = new ArrayList<>();
 

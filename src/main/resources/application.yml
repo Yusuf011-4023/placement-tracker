@@ -20,7 +20,10 @@ server:
 tracker:
   sync:
     interval-minutes: 20
-    backfill-from: 2026-08-01T00:00:00Z
+    backfill-from: 2026-06-01T00:00:00Z
+  gmail:
+    max-requests-per-second: 10 # about 3,000 of Gmail's 6,000 quota units per minute (messages.get costs 5)
+    max-messages-per-run: 500 # full bodies fetched per batch, oldest first
   ai:
     model: claude-haiku-5-5
     confidence-threshold: 0.7

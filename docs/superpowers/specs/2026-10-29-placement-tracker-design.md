@@ -54,7 +54,7 @@ The owner said they'd abandon the tracker if it **misses applications** or **get
 
 ### 5.3 Checking for mail
 - Automatic check every **15–30 minutes** while the app is running (builder picks within the range; configurable), plus a **"Check now"** button.
-- **First run backfills from 1 August 2026.**
+- **First run backfills from 1 June 2026** (changed from 1 Aug 2026 by the owner on 2026-10-30). It runs oldest first in batches of 500 messages, throttled to 10 Gmail requests per second, with progress saved after every batch.
 - **Folders scanned (my call, given "no silent misses"):** every folder except Sent, Drafts and Trash/Deleted. That includes Gmail Spam and the Promotions/Updates tabs, and user labels, because recruiter and applicant-tracking emails often land there. The local pre-filter keeps the extra volume from reaching the AI.
 - The app records which messages it has processed (per-account message IDs and a high-water mark). Each run processes everything new since the last *successful* run, so nothing is skipped after downtime or failures. Failed messages are retried on the next run.
 - A status line shows when the last check finished, and any failure (for example "Gmail needs reconnecting").

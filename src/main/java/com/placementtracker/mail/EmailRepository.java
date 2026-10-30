@@ -38,6 +38,12 @@ public class EmailRepository {
 		return find(keys.getKey().longValue());
 	}
 
+	public boolean existsByMessageId(MailAccount account, String messageId) {
+		Integer n = jdbc.sql("SELECT COUNT(*) FROM emails WHERE account = ? AND message_id = ?")
+				.params(account.name(), messageId).query(Integer.class).single();
+		return n > 0;
+	}
+
 	public boolean existsDedupeKey(String key, long excludingId) {
 		Integer n = jdbc.sql("SELECT COUNT(*) FROM emails WHERE dedupe_key = ? AND id <> ?")
 				.params(key, excludingId).query(Integer.class).single();

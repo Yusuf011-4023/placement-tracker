@@ -11,7 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 class DataDirTest {
 
 	private static TrackerProperties props(Path dataDir) {
-		return new TrackerProperties(dataDir, null, null);
+		return new TrackerProperties(dataDir, null, null, null);
 	}
 
 	@Test

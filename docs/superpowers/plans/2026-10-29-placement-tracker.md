@@ -19,7 +19,7 @@
 - OAuth tokens are encrypted at rest. Gmail: DPAPI-encrypted file store (Task 10). Outlook: azure-identity persistent token cache, which uses DPAPI on Windows (Task 11A).
 - Anthropic API key comes from env `ANTHROPIC_API_KEY`, else `anthropic.api-key` in `<data dir>\config.properties`.
 - Model: `claude-haiku-5-5` by default (property `tracker.ai.model`). Structured output via the SDK's class-based `outputConfig(Classification.class)`. `maxTokens` 4096, since adaptive thinking is on by default on Haiku 5.5. No `temperature`. Always check `stop_reason` before reading content.
-- Backfill start: `2026-08-01T00:00:00Z` (`tracker.sync.backfill-from`). Sync interval default `20` minutes (`tracker.sync.interval-minutes`, allowed 15–30).
+- Backfill start: `2026-06-01T00:00:00Z` (`tracker.sync.backfill-from`). Sync interval default `20` minutes (`tracker.sync.interval-minutes`, allowed 15–30).
 - AI confidence threshold `0.7` (`tracker.ai.confidence-threshold`). An email whose AI call fails `3` times (`tracker.ai.max-attempts`) goes to Please check.
 - Reminders at 3 days and 1 day before an action's due time. A date-only deadline means 23:59 `Europe/London` that day.
 - Folders scanned: everything except Sent, Drafts and Trash/Deleted Items, including Spam/Junk (§5.3).
@@ -371,7 +371,7 @@ Decides whether Task 11A (Graph) or 11B (forwarding) gets built. No product code
 - [ ] **Step 1: Write failing tests.** Use a `FakeMailSource` that can throw on demand, a `FakeClassifier` and a real DB.
 
 ```java
-@Test void firstRunFetchesFromBackfillDate()          // fetchSince called with 2026-08-01T00:00Z
+@Test void firstRunFetchesFromBackfillDate()          // fetchSince called with 2026-06-01T00:00Z
 @Test void laterRunFetchesFromHighWaterMinusOneDay()  // overlap; already-seen message ids skipped via insertIfNew
 @Test void filteredEmailsNeverReachClassifier()
 @Test void sync_skipsDuplicateAcrossAccounts()        // same dedupe key in GMAIL and OUTLOOK → second marked DUPLICATE, one application
@@ -608,5 +608,5 @@ Decides whether Task 11A (Graph) or 11B (forwarding) gets built. No product code
   - running the tests and the eval.
 - [ ] **Step 2: Full build.** Run `./mvnw -q clean verify`. Expected: BUILD SUCCESS, all non-eval tests pass.
 - [ ] **Step 3: Secret scan.** Run `git grep -n -I -E "sk-ant-|refresh_token|client_secret|BEGIN PRIVATE KEY"`. Expected: no matches outside README placeholder text. Also run `git status --ignored` and confirm that `tracker.db`, tokens and `config.properties` aren't tracked.
-- [ ] **Step 4: End-to-end run with the owner's real accounts.** `java -jar target/placement-tracker-*.jar` → setup page → connect Gmail (and Outlook, or confirm forwarding) → the first sync backfills from 1 Aug 2026. The owner then checks that the applications they remember are all present (the anti-goal in §4), that stages look right, and that Please check is short and sensible. Note any misses as new eval cases (in `eval/private/` if they're real emails).
+- [ ] **Step 4: End-to-end run with the owner's real accounts.** `java -jar target/placement-tracker-*.jar` → setup page → connect Gmail (and Outlook, or confirm forwarding) → the first sync backfills from 1 Jun 2026. The owner then checks that the applications they remember are all present (the anti-goal in §4), that stages look right, and that Please check is short and sensible. Note any misses as new eval cases (in `eval/private/` if they're real emails).
 - [ ] **Step 5: Commit.** Message: `docs: README, setup guide and packaging`.

@@ -47,6 +47,9 @@ public class SyncService {
 	/** Consecutive classification failures after which a run stops calling the classifier. */
 	static final int BREAKER_THRESHOLD = 3;
 
+	/** Upper bound on batches fetched per source in one sync, so a huge backlog cannot monopolise a run. */
+	static final int MAX_BATCHES_PER_SYNC = 20;
+
 	private static final Logger log = LoggerFactory.getLogger(SyncService.class);
 
 	private final List<MailSource> sources;
@@ -110,32 +113,54 @@ public class SyncService {
 		return run.report(processor.newActionIds());
 	}
 
-	/** Step 1: list the source, store what is new, mark duplicates and filtered mail. Classifies nothing. */
+	/**
+	 * Step 1: list the source, store what is new, mark duplicates and filtered mail. Classifies nothing. A source that
+	 * returns a full batch has more waiting, so this repeats from the advanced high-water mark (at most
+	 * {@link #MAX_BATCHES_PER_SYNC} times); each batch is stored and the mark saved before the next is fetched, so a
+	 * failure part-way keeps the progress made.
+	 */
 	private void fetchAndStore(MailSource source, Run run) {
 		MailAccount account = source.account();
 		if (!source.isConnected()) {
 			run.statuses.put(account, SyncStatus.NOT_CONNECTED);
 			return;
 		}
-		Instant previous = syncState.get(account).highWater();
+		for (int batch = 0; batch < MAX_BATCHES_PER_SYNC; batch++) {
+			Instant previous = syncState.get(account).highWater();
+			Instant newest = fetchBatch(source, account, previous, run);
+			if (newest == null) {
+				return; // failed or nothing new
+			}
+			int returned = run.lastBatchSize;
+			boolean full = returned > 0 && returned >= source.batchLimit();
+			if (!full || !newest.isAfter(previous == null ? Instant.MIN : previous)) {
+				return; // caught up, or the mark cannot move (no progress possible)
+			}
+		}
+		log.info("{}: stopped after {} batches; the rest is fetched on the next run", account, MAX_BATCHES_PER_SYNC);
+	}
+
+	/** Fetches and stores one batch. Returns the new high-water mark, or null if the fetch failed. */
+	private Instant fetchBatch(MailSource source, MailAccount account, Instant previous, Run run) {
 		Instant since = previous == null ? props.sync().backfillFrom() : previous.minus(1, ChronoUnit.DAYS);
 		Instant fetchStarted = Instant.now();
 		List<MailMessage> messages;
 		try {
-			messages = source.fetchSince(since);
+			messages = source.fetchSince(since, id -> emails.existsByMessageId(account, id));
 		}
 		catch (MailAuthException e) {
 			log.warn("{} needs reconnecting: {}", account, e.getMessage());
 			syncState.markError(account, SyncStatus.NEEDS_RECONNECT, e.getMessage());
 			run.statuses.put(account, SyncStatus.NEEDS_RECONNECT);
-			return;
+			return null;
 		}
 		catch (MailSourceException e) {
 			log.warn("{} fetch failed: {}", account, e.getMessage());
 			syncState.markError(account, SyncStatus.ERROR, e.getMessage());
 			run.statuses.put(account, SyncStatus.ERROR);
-			return;
+			return null;
 		}
+		run.lastBatchSize = messages.size();
 		run.fetched += messages.size();
 		Instant newest = previous;
 		for (MailMessage m : messages) {
@@ -154,6 +179,7 @@ public class SyncService {
 		// Safe before classification: everything new is stored, and step 2 picks it up now or on a later run.
 		syncState.markSuccess(account, newest == null ? props.sync().backfillFrom() : newest, Instant.now());
 		run.statuses.put(account, SyncStatus.OK);
+		return newest;
 	}
 
 	/** Marks the email DUPLICATE or FILTERED when it is one; returns true when it still needs classifying. */
@@ -303,6 +329,7 @@ public class SyncService {
 		final Map<String, MailMessage> fetchedMessages = new HashMap<>();
 		final Map<MailAccount, SyncStatus> statuses = new EnumMap<>(MailAccount.class);
 		int fetched;
+		int lastBatchSize;
 		int classified;
 		int created;
 		int updated;

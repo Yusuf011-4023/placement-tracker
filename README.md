@@ -97,7 +97,7 @@ Create a key in the Anthropic Console (the API is pay-as-you-go and separate fro
 java -jar target/placement-tracker-*.jar
 ```
 
-Open <http://127.0.0.1:8765>. The setup page has a **Connect Gmail** button that opens Google's consent screen in your browser. After that, the first sync backfills mail from **1 August 2026** and then checks every 20 minutes (or press **Check now**). A tray icon appears; use it to open the tracker or quit.
+Open <http://127.0.0.1:8765>. The setup page has a **Connect Gmail** button that opens Google's consent screen in your browser. After that, the first sync backfills mail from **1 June 2026** and then checks every 20 minutes (or press **Check now**). A tray icon appears; use it to open the tracker or quit.
 
 ### Reconnecting Gmail
 
@@ -157,7 +157,7 @@ To remove it, delete that shortcut from the Startup folder. To stop a running co
 
 - **Gmail only.** The `MailSource` interface keeps other providers possible, but none is built.
 - **Windows only.** The tray icon, notifications and the DPAPI token encryption assume Windows.
-- **Backfill starts on 1 August 2026.** Older mail is not scanned, and after that only new mail is picked up automatically. The date is configurable (`tracker.sync.backfill-from`).
+- **Backfill starts on 1 June 2026.** Older mail is not scanned, and after that only new mail is picked up automatically. The date is configurable (`tracker.sync.backfill-from`). A large backfill is fetched oldest first in batches of 500 messages (`tracker.gmail.max-messages-per-run`) at no more than 10 Gmail requests per second (`tracker.gmail.max-requests-per-second`), so the first sync can take several minutes; Gmail rate-limit errors are retried automatically.
 - **Accuracy depends on the model.** The "Please check" queue catches uncertain cases, but a wrong classification with high confidence is still possible, so glance at the board now and then.
 - It is a single-user local tool: no accounts, hosting or mobile access.
 - Some parts could only be checked by hand on a real machine (the tray icon, notification clicks, the live Gmail sign-in and the browser UI).

@@ -9,6 +9,7 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,8 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.json.GoogleJsonError;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
@@ -38,11 +42,13 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.client.util.Sleeper;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.ListMessagesResponse;
 import com.google.api.services.gmail.model.Message;
 import com.placementtracker.config.DataDir;
+import com.placementtracker.config.TrackerProperties;
 import com.placementtracker.mail.MailAccount;
 import com.placementtracker.mail.MailAuthException;
 import com.placementtracker.mail.MailMessage;
@@ -75,9 +81,18 @@ public class GmailMailSource implements MailSource {
 	/** How long the browser sign-in may take before the local callback server gives up. */
 	static final Duration SIGN_IN_TIMEOUT = Duration.ofMinutes(5);
 
+	private final RequestThrottle throttle;
+
+	private final int batchLimit;
+
 	@Autowired
-	public GmailMailSource(DataDir dataDir) {
-		this(dataDir, GmailMailSource::browserSignIn);
+	public GmailMailSource(DataDir dataDir, TrackerProperties props) {
+		this(dataDir, GmailMailSource::browserSignIn, RequestThrottle.perSecond(gmailProps(props).requestsPerSecond()),
+				gmailProps(props).messagesPerRun());
+	}
+
+	private static TrackerProperties.Gmail gmailProps(TrackerProperties props) {
+		return props.gmail() != null ? props.gmail() : new TrackerProperties.Gmail(0, 0);
 	}
 
 	/**
@@ -113,6 +128,13 @@ public class GmailMailSource implements MailSource {
 
 	/** Test seam: {@code authorizer} replaces the browser sign-in. */
 	GmailMailSource(DataDir dataDir, Authorizer authorizer) {
+		this(dataDir, authorizer, RequestThrottle.perSecond(TrackerProperties.Gmail.DEFAULT_REQUESTS_PER_SECOND),
+				TrackerProperties.Gmail.DEFAULT_MESSAGES_PER_RUN);
+	}
+
+	GmailMailSource(DataDir dataDir, Authorizer authorizer, RequestThrottle throttle, int batchLimit) {
+		this.throttle = throttle;
+		this.batchLimit = batchLimit;
 		this.secretFile = dataDir.resolve("google-client-secret.json");
 		this.dataStoreFactory = new DpapiDataStoreFactory(dataDir.resolve("tokens").resolve("gmail"));
 		this.authorizer = authorizer;
@@ -174,30 +196,63 @@ public class GmailMailSource implements MailSource {
 	}
 
 	@Override
+	public int batchLimit() {
+		return batchLimit;
+	}
+
+	@Override
 	public List<MailMessage> fetchSince(Instant since) throws MailAuthException, MailSourceException {
-		Gmail gmail = gmail();
+		return fetchSince(since, id -> false);
+	}
+
+	@Override
+	public List<MailMessage> fetchSince(Instant since, Predicate<String> alreadyStored)
+			throws MailAuthException, MailSourceException {
+		return fetchSince(gmail(), since, alreadyStored);
+	}
+
+	/**
+	 * Lists every matching id (newest first), turns them oldest first and fetches full bodies for the first
+	 * {@link #batchLimit} that are not already stored. Oldest first means each batch moves the high-water mark
+	 * forward without skipping anything, so a large backfill finishes over several batches or runs.
+	 */
+	List<MailMessage> fetchSince(Gmail gmail, Instant since, Predicate<String> alreadyStored)
+			throws MailAuthException, MailSourceException {
 		String query = "after:" + since.getEpochSecond() + " -in:sent -in:drafts -in:trash";
+		List<String> ids = new ArrayList<>();
 		List<MailMessage> out = new ArrayList<>();
 		try {
 			String pageToken = null;
 			do {
+				throttle.acquire();
 				ListMessagesResponse page = gmail.users().messages().list("me").setQ(query)
 						.setIncludeSpamTrash(true).setMaxResults(100L).setPageToken(pageToken).execute();
 				if (page.getMessages() != null) {
 					for (Message ref : page.getMessages()) {
-						try {
-							out.add(GmailMessageMapper.toMailMessage(get(gmail, ref.getId())));
-						}
-						catch (HttpResponseException e) {
-							if (e.getStatusCode() != 404) { // 404: deleted between list and get
-								throw e;
-							}
-						}
+						ids.add(ref.getId());
 					}
 				}
 				pageToken = page.getNextPageToken();
 			}
 			while (pageToken != null);
+			Collections.reverse(ids);
+			for (String id : ids) {
+				if (out.size() >= batchLimit) {
+					break;
+				}
+				if (alreadyStored.test(id)) {
+					continue;
+				}
+				try {
+					throttle.acquire();
+					out.add(GmailMessageMapper.toMailMessage(get(gmail, id)));
+				}
+				catch (HttpResponseException e) {
+					if (e.getStatusCode() != 404) { // 404: deleted between list and get
+						throw e;
+					}
+				}
+			}
 		}
 		catch (IOException e) {
 			throw translate(e);
@@ -210,6 +265,7 @@ public class GmailMailSource implements MailSource {
 	public Optional<MailMessage> fetchOne(String messageId) throws MailAuthException, MailSourceException {
 		Gmail gmail = gmail();
 		try {
+			throttle.acquire();
 			return Optional.of(GmailMessageMapper.toMailMessage(get(gmail, messageId)));
 		}
 		catch (HttpResponseException e) {
@@ -259,21 +315,54 @@ public class GmailMailSource implements MailSource {
 	}
 
 	/**
-	 * Signs each request with the credential (which also refreshes the token on a 401) and retries rate limiting
-	 * (429), server errors (5xx) and I/O errors with exponential backoff, so one hiccup during a large backfill does
-	 * not fail the whole listing.
+	 * Signs each request with the credential (which also refreshes the token on a 401) and retries with exponential
+	 * backoff: 429, 5xx and Gmail's rate-limit 403s (reason rateLimitExceeded / userRateLimitExceeded), plus I/O
+	 * errors. Any other 403 is a real permission problem and is thrown at once.
 	 */
 	static HttpRequestInitializer requestInitializer(Credential credential) {
+		return requestInitializer(credential, Sleeper.DEFAULT);
+	}
+
+	static HttpRequestInitializer requestInitializer(Credential credential, Sleeper sleeper) {
+		JsonFactory json = GsonFactory.getDefaultInstance();
 		return request -> {
 			credential.initialize(request);
-			HttpBackOffUnsuccessfulResponseHandler backOff = new HttpBackOffUnsuccessfulResponseHandler(
-					new ExponentialBackOff()).setBackOffRequired(
-							r -> r.getStatusCode() == 429 || r.getStatusCode() / 100 == 5);
-			request.setUnsuccessfulResponseHandler((req, response, supportsRetry) ->
-					credential.handleResponse(req, response, supportsRetry)
-							|| backOff.handleResponse(req, response, supportsRetry));
-			request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(new ExponentialBackOff()));
+			HttpBackOffUnsuccessfulResponseHandler backOff = new HttpBackOffUnsuccessfulResponseHandler(backOff())
+					.setSleeper(sleeper).setBackOffRequired(r -> true);
+			request.setUnsuccessfulResponseHandler((req, response, supportsRetry) -> {
+				if (credential.handleResponse(req, response, supportsRetry)) {
+					return true;
+				}
+				int code = response.getStatusCode();
+				if (code == 429 || code / 100 == 5) {
+					return backOff.handleResponse(req, response, supportsRetry);
+				}
+				if (code == 403) {
+					// the body is read once here; a non-retryable 403 is thrown from it so its details are kept
+					GoogleJsonResponseException e = GoogleJsonResponseException.from(json, response);
+					if (isRateLimitReason(e)) {
+						return backOff.handleResponse(req, response, supportsRetry);
+					}
+					throw e;
+				}
+				return false;
+			});
+			request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(backOff()).setSleeper(sleeper));
 		};
+	}
+
+	private static boolean isRateLimitReason(GoogleJsonResponseException e) {
+		GoogleJsonError details = e.getDetails();
+		if (details == null || details.getErrors() == null) {
+			return false;
+		}
+		return details.getErrors().stream().anyMatch(
+				i -> "rateLimitExceeded".equals(i.getReason()) || "userRateLimitExceeded".equals(i.getReason()));
+	}
+
+	private static ExponentialBackOff backOff() {
+		return new ExponentialBackOff.Builder().setInitialIntervalMillis(1000).setMultiplier(2.0)
+				.setMaxIntervalMillis(32_000).setMaxElapsedTimeMillis(180_000).build();
 	}
 
 	private HttpTransport transport() throws GeneralSecurityException, IOException {

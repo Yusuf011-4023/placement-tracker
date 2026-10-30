@@ -48,7 +48,7 @@ class GmailMailSourceTest {
 
 	@BeforeEach
 	void setUp() throws Exception {
-		dataDir = new DataDir(new TrackerProperties(tmp, null, null));
+		dataDir = new DataDir(new TrackerProperties(tmp, null, null, null));
 		Files.writeString(tmp.resolve("google-client-secret.json"), SECRET, StandardCharsets.UTF_8);
 		tokens = tmp.resolve("tokens").resolve("gmail");
 	}
@@ -121,6 +121,61 @@ class GmailMailSourceTest {
 		assertThat(response.getStatusCode()).isEqualTo(200); // 429 and 503 were retried with backoff
 		assertThat(authHeaders).hasSize(3).allMatch("Bearer token-1"::equals);
 		assertThat(request.getIOExceptionHandler()).isInstanceOf(HttpBackOffIOExceptionHandler.class);
+	}
+
+	private static MockHttpTransport sequence(List<Integer> statuses, List<String> bodies, List<Integer> calls) {
+		return new MockHttpTransport() {
+			@Override
+			public LowLevelHttpRequest buildRequest(String method, String url) {
+				return new MockLowLevelHttpRequest(url) {
+					@Override
+					public LowLevelHttpResponse execute() {
+						calls.add(1);
+						return new MockLowLevelHttpResponse().setStatusCode(statuses.remove(0))
+								.setContentType("application/json").setContent(bodies.remove(0));
+					}
+				};
+			}
+		};
+	}
+
+	private static String error(int code, String reason) {
+		return "{\"error\":{\"code\":" + code + ",\"message\":\"m\",\"errors\":[{\"message\":\"m\","
+				+ "\"domain\":\"usageLimits\",\"reason\":\"" + reason + "\"}],\"status\":\"X\"}}";
+	}
+
+	private static HttpRequest request(MockHttpTransport transport, List<Long> slept) throws Exception {
+		Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod()).setAccessToken("t");
+		return transport.createRequestFactory(GmailMailSource.requestInitializer(credential, ms -> slept.add(ms)))
+				.buildGetRequest(new GenericUrl("https://gmail.googleapis.com/gmail/v1/users/me/messages/x"));
+	}
+
+	@Test
+	void rateLimit403IsRetried() throws Exception {
+		for (String reason : List.of("rateLimitExceeded", "userRateLimitExceeded")) {
+			List<Integer> calls = new ArrayList<>();
+			List<Long> slept = new ArrayList<>();
+			MockHttpTransport transport = sequence(new ArrayList<>(List.of(403, 200)),
+					new ArrayList<>(List.of(error(403, reason), "{}")), calls);
+
+			HttpResponse response = request(transport, slept).execute();
+
+			assertThat(response.getStatusCode()).isEqualTo(200);
+			assertThat(calls).hasSize(2);
+			assertThat(slept).hasSize(1);
+		}
+	}
+
+	@Test
+	void permission403IsNotRetried() throws Exception {
+		List<Integer> calls = new ArrayList<>();
+		MockHttpTransport transport = sequence(new ArrayList<>(List.of(403, 200)),
+				new ArrayList<>(List.of(error(403, "insufficientPermissions"), "{}")), calls);
+
+		assertThatThrownBy(() -> request(transport, new ArrayList<>()).execute())
+				.isInstanceOfSatisfying(com.google.api.client.http.HttpResponseException.class,
+						e -> assertThat(e.getStatusCode()).isEqualTo(403));
+		assertThat(calls).hasSize(1);
 	}
 
 	@Test

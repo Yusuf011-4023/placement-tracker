@@ -46,7 +46,7 @@ import com.placementtracker.review.ReviewRepository;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class SyncServiceTest {
 
-	static final Instant BACKFILL = Instant.parse("2026-08-01T00:00:00Z");
+	static final Instant BACKFILL = Instant.parse("2026-06-01T00:00:00Z");
 
 	@TempDir
 	static Path tmp;
@@ -107,7 +107,7 @@ class SyncServiceTest {
 
 		assertThat(gmail.sinceCalls.get(1)).isEqualTo(t.minus(1, ChronoUnit.DAYS));
 		assertThat(classifier.calls).isEqualTo(1);
-		assertThat(second.fetched()).isEqualTo(1);
+		assertThat(second.fetched()).isZero(); // the overlap re-lists it, but an already-stored id is not fetched again
 		assertThat(count("emails")).isEqualTo(1);
 	}
 
@@ -396,6 +396,37 @@ class SyncServiceTest {
 				String.class, id)).containsExactly("ONLINE_TEST", "INTERVIEW");
 	}
 
+	@Test
+	void syncLoopsBatchesUntilCaughtUp() {
+		gmail.batchLimit = 2;
+		Instant newest = null;
+		for (int i = 1; i <= 5; i++) {
+			newest = Instant.parse("2026-09-0" + i + "T10:00:00Z");
+			gmail.add(msg(MailAccount.GMAIL, "b" + i, "<b" + i + "@x>", "Application received", newest));
+		}
+
+		SyncReport report = service(gmail).syncAll();
+
+		assertThat(count("emails")).isEqualTo(5);
+		assertThat(classifier.calls).isEqualTo(5);
+		assertThat(report.fetched()).isGreaterThanOrEqualTo(5);
+		assertThat(state.get(MailAccount.GMAIL).highWater()).isEqualTo(newest);
+		assertThat(gmail.sinceCalls.size()).isBetween(3, 20);
+	}
+
+	@Test
+	void batchLoopStopsWhenHighWaterDoesNotAdvance() {
+		gmail.batchLimit = 2;
+		Instant same = Instant.parse("2026-09-01T10:00:00Z");
+		for (int i = 1; i <= 4; i++) { // more than a batch, all with one timestamp: the mark cannot move
+			gmail.add(msg(MailAccount.GMAIL, "s" + i, "<s" + i + "@x>", "Application received", same));
+		}
+
+		service(gmail).syncAll();
+
+		assertThat(gmail.sinceCalls.size()).isLessThanOrEqualTo(2);
+	}
+
 	// ---- helpers ----
 
 	int count(String table) {
@@ -431,6 +462,8 @@ class SyncServiceTest {
 		final List<Instant> sinceCalls = new ArrayList<>();
 		boolean authFail;
 		boolean sourceFail;
+		int batchLimit = Integer.MAX_VALUE;
+		java.util.function.Predicate<String> skip = id -> false;
 
 		FakeMailSource(MailAccount account) {
 			this.account = account;
@@ -461,7 +494,18 @@ class SyncServiceTest {
 				throw new MailSourceException("down", null);
 			}
 			return messages.stream().filter(m -> !m.receivedAt().isBefore(since))
-					.sorted(Comparator.comparing(MailMessage::receivedAt)).toList();
+					.filter(m -> !skip.test(m.messageId())).sorted(Comparator.comparing(MailMessage::receivedAt))
+					.limit(batchLimit).toList();
+		}
+
+		public List<MailMessage> fetchSince(Instant since, java.util.function.Predicate<String> alreadyStored)
+				throws MailAuthException, MailSourceException {
+			skip = alreadyStored; // like the Gmail source, stored ids are not returned and do not count toward the limit
+			return fetchSince(since);
+		}
+
+		public int batchLimit() {
+			return batchLimit;
 		}
 
 		public Optional<MailMessage> fetchOne(String messageId) {
