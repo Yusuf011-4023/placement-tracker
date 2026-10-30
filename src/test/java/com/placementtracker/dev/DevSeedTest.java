@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mock.env.MockEnvironment;
 
+import com.placementtracker.mail.EmailRepository;
+import com.placementtracker.mail.PreFilter;
 import com.placementtracker.mail.gmail.GmailMailSource;
 
 /** The seed flag gates {@link DevCommands}; {@link DevSeeder} only writes into an empty database. */
@@ -19,7 +21,8 @@ class DevSeedTest {
 	private final ApplicationContext context = mock(ApplicationContext.class);
 
 	private DevCommands commands(MockEnvironment env) {
-		return new DevCommands(mock(GmailMailSource.class), context, env, seeder);
+		return new DevCommands(mock(GmailMailSource.class), context, env, seeder, mock(EmailRepository.class),
+				mock(PreFilter.class));
 	}
 
 	@Test

@@ -31,33 +31,36 @@ tracker:
     max-attempts: 3
   prefilter:
     keywords:
-      - application
+      - application*
       - applied
       - apply
-      - placement
-      - internship
+      - applying
+      - placement*
+      - internship*
       - intern
+      - interns
       - industrial
       - year in industry
-      - assessment
+      - assessment*
       - online test
       - test invitation
-      - interview
+      - interview*
       - assessment centre
-      - candidate
+      - candidate*
       - offer
-      - recruit
+      - recruit*
       - talent
       - hiring
-      - careers
+      - career*
       - vacancy
+      - vacancies
       - position
       - role
-      - shortlist
+      - shortlist*
       - next steps
       - unfortunately
       - thank you for your interest
-      - invitation
+      - invitation*
     ats-domains:
       - myworkday.com
       - workday.com
@@ -82,3 +85,12 @@ tracker:
       - targetjobs.co.uk
       - prospects.ac.uk
     extra-domains: []
+    # job alerts and newsletters, never applications; personal additions go in blocked-senders.txt in the data folder
+    blocked-senders:
+      - jobalerts-noreply@linkedin.com
+      - newsletters-noreply@linkedin.com
+      - invitations@linkedin.com
+      - updates-noreply@linkedin.com
+      - em.linkedin.com
+      - jobalert.indeed.com
+      - match.indeed.com

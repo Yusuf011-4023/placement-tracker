@@ -121,6 +121,16 @@ public class EmailRepository {
 				.query(this::map).list();
 	}
 
+	/**
+	 * Read-only: every GMAIL email that was ruled out, classified or reviewed, or is linked to an application. The
+	 * pre-filter replay re-checks these against the current keyword and blocklist rules.
+	 */
+	public List<EmailRecord> findForPrefilterReplay() {
+		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE account = 'GMAIL' AND "
+				+ "(status IN ('NOT_PLACEMENT', 'PROCESSED', 'REVIEW') OR application_id IS NOT NULL) ORDER BY id")
+				.query(this::map).list();
+	}
+
 	public Optional<EmailRecord> find(long id) {
 		return jdbc.sql("SELECT " + COLUMNS + " FROM emails WHERE id = ?").param(id).query(this::map).optional();
 	}

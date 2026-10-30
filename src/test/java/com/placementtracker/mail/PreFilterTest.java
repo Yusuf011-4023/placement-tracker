@@ -2,11 +2,15 @@ package com.placementtracker.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import com.placementtracker.config.PreFilterProperties;
 
@@ -14,13 +18,15 @@ class PreFilterTest {
 
 	private static final List<String> KEYWORDS = List.of("application", "applied", "apply", "placement",
 			"internship", "intern", "assessment", "online test", "interview", "offer", "candidate", "hiring",
-			"next steps", "unfortunately", "invitation", "online assessment");
+			"next steps", "unfortunately", "invitation", "online assessment", "role", "recruit*");
 
 	private static final List<String> ATS_DOMAINS = List.of("myworkday.com", "greenhouse.io", "linkedin.com",
 			"brightnetwork.co.uk");
 
+	private static final List<String> BLOCKED = List.of("jobalerts-noreply@linkedin.com", "match.indeed.com");
+
 	private static final PreFilter FILTER = new PreFilter(
-			new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of("example-careers.org")));
+			new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of("example-careers.org"), BLOCKED), Path.of("none"));
 
 	private static MailMessage msg(String from, String subject, String body, Set<String> labels) {
 		return new MailMessage(MailAccount.GMAIL, "m1", "t1", null, from, subject,
@@ -92,5 +98,76 @@ class PreFilterTest {
 	@Test
 	void nullFieldsDoNotThrow() {
 		assertThat(FILTER.shouldClassify(msg(null, null, null, null))).isFalse();
+	}
+
+	@Test
+	void roleDoesNotMatchInsideControl() {
+		assertThat(FILTER.shouldClassify(msg("a@unknown.example", "Take control of your energy bill", "", Set.of())))
+			.isFalse();
+	}
+
+	@Test
+	void recruitPrefixMatchesRecruiter() {
+		assertThat(FILTER.shouldClassify(msg("a@unknown.example", "Hello", "A recruiter will be in touch",
+				Set.of()))).isTrue();
+	}
+
+	@Test
+	void internDoesNotMatchInternational() {
+		assertThat(FILTER.shouldClassify(msg("a@unknown.example", "International shipping now free", "", Set.of())))
+			.isFalse();
+	}
+
+	@Test
+	void blockedAddressBeatsAtsDomain() {
+		assertThat(FILTER.shouldClassify(msg("LinkedIn <jobalerts-noreply@linkedin.com>",
+				"New internship roles for you", "", Set.of()))).isFalse();
+	}
+
+	@Test
+	void jobsNoreplyLinkedinStillPasses() {
+		assertThat(FILTER.shouldClassify(msg("jobs-noreply@linkedin.com", "Your application was sent to Capgemini",
+				"", Set.of()))).isTrue();
+	}
+
+	@Test
+	void blockedDomainCoversSubdomains() {
+		assertThat(FILTER.shouldClassify(msg("donotreply@match.indeed.com", "Interview invitation", "", Set.of())))
+			.isFalse();
+		assertThat(FILTER.shouldClassify(msg("indeedapply@indeed.com", "Interview invitation", "", Set.of())))
+			.isTrue();
+	}
+
+	@Test
+	void blockedSendersFileIsLoaded(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("blocked-senders.txt");
+		Files.writeString(file, "# comment\n\n  Shop.Example.COM  \ndeals@other.example\n");
+		PreFilter filter = new PreFilter(
+				new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of(), List.of()), file);
+
+		assertThat(filter.shouldClassify(msg("x@news.shop.example.com", "Interview invitation", "", Set.of())))
+			.isFalse();
+		assertThat(filter.shouldClassify(msg("deals@other.example", "Interview invitation", "", Set.of())))
+			.isFalse();
+		assertThat(filter.shouldClassify(msg("jobs@other.example", "Interview invitation", "", Set.of())))
+			.isTrue();
+	}
+
+	@Test
+	void missingBlockedSendersFileIsFine(@TempDir Path dir) {
+		PreFilter filter = new PreFilter(
+				new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of(), List.of()), dir.resolve("blocked-senders.txt"));
+
+		assertThat(filter.shouldClassify(msg("a@x.example", "Interview invitation", "", Set.of()))).isTrue();
+		assertThat(filter.shouldClassify(msg("a@x.example", "Lunch?", "", Set.of()))).isFalse();
+	}
+
+	@Test
+	void unreadableBlockedSendersFileIsIgnored(@TempDir Path dir) {
+		// A directory in place of the file cannot be read as text.
+		PreFilter filter = new PreFilter(
+				new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of(), List.of()), dir);
+
+		assertThat(filter.shouldClassify(msg("a@x.example", "Interview invitation", "", Set.of()))).isTrue();
 	}
 }

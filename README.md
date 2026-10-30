@@ -103,6 +103,18 @@ Open <http://127.0.0.1:8765>. The setup page has a **Connect Gmail** button that
 
 If Google stops accepting the stored sign-in (for example you revoked access, changed your password, or the consent screen was left in Testing so the token expired after 7 days), the dashboard shows **"GMAIL needs reconnecting"**. Click **Open setup**, then **Reconnect**: it is one click and a fresh Google sign-in. The old token is discarded first, including one that can no longer be decrypted (for example after a Windows profile change). Nothing is lost while disconnected: the next sync after reconnecting catches up from where it stopped. If the sign-in fails, the setup page shows why.
 
+### Blocked senders and the pre-filter replay
+
+Before an email goes to Claude, a local pre-filter drops obvious noise. Keywords match whole words only. To stop specific senders (for example a shop's newsletters) ever reaching Claude, create `blocked-senders.txt` in the data folder (`%LOCALAPPDATA%\PlacementTracker`). Put one address or domain per line; a domain also covers its subdomains. Lines starting with `#` and blank lines are ignored, and case does not matter. Changes take effect on restart. A missing file is fine. Mail from a blocked sender is dropped even if it comes from a job-board domain, so only list senders that never send applications.
+
+To check that the current rules would not have dropped any email that mattered, replay your stored emails through the filter. It only reads (it fetches message bodies from Gmail and changes nothing), then exits. Run it while the tracker is stopped or on another port:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--tracker.dev.prefilter-replay=true --server.port=0 --tracker.sync.scheduler-enabled=false"
+```
+
+The log ends with a line such as `prefilter-replay: 5900 replayed; 900 still sent to AI, 5000 now filtered; relevant (PROCESSED/REVIEW/linked) dropped: 0`. Anything other than 0 is followed by one line per email to look at.
+
 ### Logs
 
 The app writes its log to `%LOCALAPPDATA%\PlacementTracker\logs\tracker.log` (next to the database; it rolls over at 10 MB and keeps 14 files). Look there first if something seems off, for example the AI or Gmail being unavailable. The dashboard also shows a banner when the AI is failing and how many emails are waiting for it; **Try again** on a "Could not be read" item queues it for another attempt.
