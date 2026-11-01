@@ -5,7 +5,8 @@
   A JDK 24+ (jpackage only; the app itself runs on the bundled runtime). Defaults to
   $env:JPACKAGE_JDK, else $env:JAVA_HOME.
 .PARAMETER AppVersion
-  x.y.z installer version. Default: the pom version without -SNAPSHOT.
+  x.y.z installer version. Default: 1.<yy>.<dayOfYear*100+hour> from local time, so every build
+  is newer than the last and upgrades an installed copy in place.
 .PARAMETER SkipTests
   Pass -DskipTests to Maven.
 #>
@@ -50,6 +51,23 @@ if (-not (Get-Command wix.exe -ErrorAction SilentlyContinue)) {
     }
 }
 
+$extList = (& wix.exe extension list -g) | Out-String
+if (($extList -notmatch 'WixToolset\.Util\.wixext') -or ($extList -notmatch 'WixToolset\.UI\.wixext')) {
+    throw ("A WiX extension is missing. Add both:`n" +
+           "  wix extension add -g WixToolset.Util.wixext/5.0.2`n" +
+           "  wix extension add -g WixToolset.UI.wixext/5.0.2")
+}
+
+# --- A running tracker locks the jar in target\ ------------------------------
+Get-ChildItem (Join-Path $root 'target') -Filter 'placement-tracker-*.jar' -ErrorAction SilentlyContinue | ForEach-Object {
+    try {
+        $fs = [System.IO.File]::Open($_.FullName, 'Open', 'ReadWrite', 'None')
+        $fs.Close()
+    } catch {
+        throw 'The tracker is running from target\ (file in use). Quit it from the tray icon (right-click > Quit), then run this again.'
+    }
+}
+
 # --- Build the jar ---------------------------------------------------------
 Push-Location $root
 try {
@@ -64,12 +82,11 @@ try {
     if (-not $jar) { throw 'No application jar found in target\.' }
 
     if (-not $AppVersion) {
-        if ($jar.BaseName -match '^placement-tracker-(\d+\.\d+\.\d+)') {
-            $AppVersion = $Matches[1]
-        } else {
-            throw "Cannot derive the version from $($jar.Name); pass -AppVersion x.y.z."
-        }
+        # MSI limits: major/minor <= 255, build <= 65535 (dayOfYear*100+hour is at most 36623).
+        $now = Get-Date
+        $AppVersion = '1.{0}.{1}' -f ($now.Year - 2000), ($now.DayOfYear * 100 + $now.Hour)
     }
+    Write-Host "Installer version: $AppVersion"
 
     # Stage only the app jar.
     $stage = 'target\installer-input'
