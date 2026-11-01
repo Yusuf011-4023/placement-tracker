@@ -165,6 +165,10 @@ To start with Windows:
 
 To remove it, delete that shortcut from the Startup folder. To stop a running copy, use the tray icon's **Quit**.
 
+### Auto-start
+
+In the installed app, Placement Tracker starts automatically when you log in (silently, with no browser tab; the tray icon appears). It is on by default and can be switched off on the setup page under "Start automatically when I log in". Turn it off before uninstalling; otherwise Windows keeps a dead startup entry, which is harmless and can be removed in Task Manager > Startup apps.
+
 ## Known limitations
 
 - **Gmail only.** The `MailSource` interface keeps other providers possible, but none is built.
