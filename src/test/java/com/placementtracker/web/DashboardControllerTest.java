@@ -120,6 +120,7 @@ class DashboardControllerTest extends ApiTestBase {
 		mvc.perform(get("/api/dashboard").header("Host", "localhost:8765"))
 				.andExpect(jsonPath("$.aiConfigured").isBoolean())
 				.andExpect(jsonPath("$.syncing").isBoolean())
+				.andExpect(jsonPath("$.progress").value(org.hamcrest.Matchers.nullValue()))
 				.andExpect(jsonPath("$.accounts[0].account", is("GMAIL")))
 				.andExpect(jsonPath("$.accounts[0].connected").isBoolean())
 				.andExpect(jsonPath("$.accounts[0].status", is("NOT_CONNECTED")))

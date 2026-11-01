@@ -63,6 +63,9 @@ public class SyncService {
 	private final TrackerProperties props;
 	private final java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean();
 
+	/** The pass in progress, for {@link #progress()}; set when a pass starts and cleared when it ends. */
+	private volatile Run current;
+
 	/** Spring constructor: tolerates there being no MailSource beans yet. */
 	@Autowired
 	public SyncService(ObjectProvider<MailSource> sources, PreFilter preFilter, EmailClassifier classifier,
@@ -100,6 +103,7 @@ public class SyncService {
 				return runPass();
 			}
 			finally {
+				current = null;
 				running.set(false);
 			}
 		}
@@ -110,8 +114,15 @@ public class SyncService {
 		return running.get();
 	}
 
+	/** Live counters of the running pass, or empty when no pass is running. Safe to call from any thread. */
+	public Optional<SyncProgress> progress() {
+		Run run = current;
+		return run == null ? Optional.empty() : Optional.of(new SyncProgress(run.fetched, run.classified));
+	}
+
 	private SyncReport runPass() {
 		Run run = new Run(classifier.isConfigured());
+		current = run;
 		for (MailSource source : sources) {
 			try {
 				fetchAndStore(source, run);
@@ -149,6 +160,10 @@ public class SyncService {
 			if (newest == null) {
 				return; // failed or nothing new
 			}
+			// Classify this batch now, so applications appear on the board while later batches are still to come.
+			processBatch(run);
+			log.info("{}: batch {} stored {} messages; {} checked by AI so far this run", account, batch + 1,
+					run.lastBatchSize, run.classified);
 			int returned = run.lastBatchSize;
 			boolean full = returned > 0 && returned >= source.batchLimit();
 			if (!full || !newest.isAfter(previous == null ? Instant.MIN : previous)) {
@@ -156,6 +171,17 @@ public class SyncService {
 			}
 		}
 		log.info("{}: stopped after {} batches; the rest is fetched on the next run", account, MAX_BATCHES_PER_SYNC);
+	}
+
+	/** Classifies what is waiting after a batch, then drops the batch's bodies so at most one batch is held in memory. */
+	private void processBatch(Run run) {
+		try {
+			processWaiting(run);
+		}
+		catch (RuntimeException e) {
+			log.error("Processing pass failed", e);
+		}
+		run.fetchedMessages.clear();
 	}
 
 	/** Fetches and stores one batch. Returns the new high-water mark, or null if the fetch failed. */
@@ -240,13 +266,13 @@ public class SyncService {
 		List<EmailRecord> todo = new ArrayList<>(emails.findRetryable(props.ai().maxAttempts()));
 		todo.addAll(emails.findPending());
 		todo.sort(OLDEST_FIRST);
-		Set<Long> seen = new HashSet<>();
 		for (int i = 0; i < todo.size(); i++) {
 			EmailRecord rec = todo.get(i);
 			if (run.breakerOpen()) {
 				break; // AI looks down: leave the rest as they are, no attempt counted
 			}
-			if (!seen.add(rec.id())) {
+			// Once per run: a failing email must not burn all its attempts across the batches of one run.
+			if (!run.attempted.add(rec.id())) {
 				continue;
 			}
 			MailMessage m = run.fetchedMessages.get(key(rec.account(), rec.messageId()));
@@ -345,10 +371,13 @@ public class SyncService {
 	private static final class Run {
 		final boolean aiConfigured;
 		final Map<String, MailMessage> fetchedMessages = new HashMap<>();
+		/** Ids already handled or skipped this run; processWaiting runs after every batch and must not repeat them. */
+		final Set<Long> attempted = new HashSet<>();
 		final Map<MailAccount, SyncStatus> statuses = new EnumMap<>(MailAccount.class);
-		int fetched;
+		// fetched and classified are written only by the sync thread but read by progress() from web threads.
+		volatile int fetched;
 		int lastBatchSize;
-		int classified;
+		volatile int classified;
 		int created;
 		int updated;
 		int newReviewItems;

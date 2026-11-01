@@ -45,7 +45,11 @@ public final class Dtos {
 	public record Ai(boolean configured, String lastError, Instant lastErrorAt, Instant lastSuccessAt, int waiting) {
 	}
 
-	public record Dashboard(List<Account> accounts, boolean aiConfigured, Ai ai, boolean syncing,
+	/** Live sync counters; the Dashboard carries null when no sync is running. */
+	public record Progress(int downloaded, int checked) {
+	}
+
+	public record Dashboard(List<Account> accounts, boolean aiConfigured, Ai ai, boolean syncing, Progress progress,
 			List<ChartSlice> chart, List<NeedsAction> needsAction, List<PleaseCheck> pleaseCheck,
 			Map<String, List<Card>> board) {
 	}

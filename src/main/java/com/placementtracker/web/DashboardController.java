@@ -33,6 +33,7 @@ import com.placementtracker.web.dto.Dtos.ChartSlice;
 import com.placementtracker.web.dto.Dtos.Dashboard;
 import com.placementtracker.web.dto.Dtos.NeedsAction;
 import com.placementtracker.web.dto.Dtos.PleaseCheck;
+import com.placementtracker.web.dto.Dtos.Progress;
 import com.placementtracker.web.dto.Dtos.Urgency;
 
 import tools.jackson.databind.JsonNode;
@@ -87,7 +88,8 @@ public class DashboardController {
 		Ai ai = new Ai(aiConfigured, health.lastError(), health.lastErrorAt(), health.lastSuccessAt(),
 				emails.countWaiting());
 		return new Dashboard(accounts.list(), aiConfigured, ai,
-				syncRunner.isSyncing() || syncService.isRunning(), chart(all),
+				syncRunner.isSyncing() || syncService.isRunning(),
+				syncService.progress().map(p -> new Progress(p.downloaded(), p.checked())).orElse(null), chart(all),
 				needsAction(open, byId, now), pleaseCheck(byId), board(all, open, now));
 	}
 

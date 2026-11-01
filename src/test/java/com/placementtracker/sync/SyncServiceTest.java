@@ -447,6 +447,96 @@ class SyncServiceTest {
 		assertThat(svc[0].isRunning()).isFalse();
 	}
 
+	@Test
+	void classifiesEachBatchBeforeFetchingNext() {
+		List<String> events = new ArrayList<>();
+		FakeMailSource src = new FakeMailSource(MailAccount.GMAIL) {
+			@Override
+			public List<MailMessage> fetchSince(Instant since, java.util.function.Predicate<String> alreadyStored)
+					throws MailAuthException, MailSourceException {
+				events.add("fetch");
+				return super.fetchSince(since, alreadyStored);
+			}
+		};
+		src.batchLimit = 2;
+		for (int i = 1; i <= 3; i++) {
+			src.add(msg(MailAccount.GMAIL, "e" + i, "<e" + i + "@x>", "Application received",
+					Instant.parse("2026-09-0" + i + "T10:00:00Z")));
+		}
+		classifier = new FakeClassifier() {
+			@Override
+			public Classification classify(MailMessage m) throws ClassificationException {
+				events.add("classify:" + m.messageId());
+				return super.classify(m);
+			}
+		};
+
+		service(src).syncAll();
+
+		assertThat(events.subList(0, 4)).containsExactly("fetch", "classify:e1", "classify:e2", "fetch");
+		assertThat(classifier.calls).isEqualTo(3);
+	}
+
+	@Test
+	void retryableFailedEmailAttemptedOncePerRun() {
+		gmail.add(msg(MailAccount.GMAIL, "f", "<f@x>", "Application FAIL", Instant.parse("2026-08-01T10:00:00Z")));
+		classifier.configured = false;
+		service(gmail).syncAll();
+		jdbc.update("UPDATE emails SET status = 'FAILED', attempts = 0 WHERE message_id = 'f'");
+		classifier.configured = true;
+		classifier.failWhenSubjectContains = "FAIL";
+		gmail.batchLimit = 2;
+		for (int i = 1; i <= 6; i++) {
+			gmail.add(msg(MailAccount.GMAIL, "n" + i, "<n" + i + "@x>", "Application received",
+					Instant.parse("2026-09-0" + i + "T10:00:00Z")));
+		}
+
+		service(gmail).syncAll();
+
+		assertThat(gmail.sinceCalls.size()).isGreaterThanOrEqualTo(3);
+		assertThat(attempts("f")).isEqualTo(1);
+	}
+
+	@Test
+	void breakerOpenStillStoresLaterBatches() {
+		gmail.batchLimit = 2;
+		for (int i = 1; i <= 6; i++) {
+			gmail.add(msg(MailAccount.GMAIL, "k" + i, "<k" + i + "@x>", "Application received",
+					Instant.parse("2026-09-0" + i + "T10:00:00Z")));
+		}
+		classifier.failAll = true;
+
+		service(gmail).syncAll();
+
+		assertThat(count("emails")).isEqualTo(6);
+		assertThat(classifier.calls).isEqualTo(SyncService.BREAKER_THRESHOLD);
+		assertThat(count("emails WHERE status = 'FAILED' AND attempts > 0")).isZero();
+		assertThat(count("emails WHERE attempts > 0")).isZero();
+	}
+
+	@Test
+	void progressVisibleOnlyWhileRunning() {
+		gmail.add(msg(MailAccount.GMAIL, "p1", "<p1@x>", "Application received", Instant.parse("2026-09-01T10:00:00Z")));
+		SyncService[] svc = new SyncService[1];
+		List<Optional<SyncProgress>> seen = new ArrayList<>();
+		classifier = new FakeClassifier() {
+			@Override
+			public Classification classify(MailMessage m) throws ClassificationException {
+				seen.add(svc[0].progress());
+				return super.classify(m);
+			}
+		};
+		svc[0] = service(gmail);
+
+		assertThat(svc[0].progress()).isEmpty();
+		svc[0].syncAll();
+
+		assertThat(seen).hasSize(1);
+		assertThat(seen.get(0)).isPresent();
+		assertThat(seen.get(0).get().downloaded()).isGreaterThanOrEqualTo(1);
+		assertThat(svc[0].progress()).isEmpty();
+	}
+
 	// ---- helpers ----
 
 	int count(String table) {

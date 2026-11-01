@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import com.placementtracker.config.PreFilterProperties;
+
 /** Checks that the {@code tracker.prefilter.*} lists in application.yml bind to the pre-filter. */
 @SpringBootTest
 class PreFilterBindingTest {
@@ -16,11 +18,19 @@ class PreFilterBindingTest {
 	@Autowired
 	private PreFilter preFilter;
 
+	@Autowired
+	private PreFilterProperties properties;
+
 	@Test
 	void configuredAtsDomainBindsFromYaml() {
 		MailMessage m = new MailMessage(MailAccount.GMAIL, "m1", "t1", null, "noreply@myworkday.com", "Update",
 				Instant.parse("2026-10-20T10:00:00Z"), "", null, Set.of());
 
 		assertThat(preFilter.shouldClassify(m)).isTrue();
+	}
+
+	@Test
+	void blockedSendersBindFromYaml() {
+		assertThat(properties.blockedSenders()).contains("jobalerts-noreply@linkedin.com");
 	}
 }

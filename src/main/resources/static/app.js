@@ -87,7 +87,10 @@ function renderAll() {
 
 function renderTopBar() {
   const times = dashboard.accounts.map((a) => a.lastSuccessAt).filter(Boolean).sort();
-  $("last-checked").textContent = "Last checked " + timeAgo(times.length ? times[times.length - 1] : null);
+  const p = dashboard.progress;
+  $("last-checked").textContent = p
+    ? "Checking your emails: " + p.downloaded.toLocaleString() + " downloaded · " + p.checked.toLocaleString() + " checked by AI"
+    : "Last checked " + timeAgo(times.length ? times[times.length - 1] : null);
   const button = $("check-now");
   button.disabled = dashboard.syncing;
   button.textContent = dashboard.syncing ? "Checking…" : "Check now";

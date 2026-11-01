@@ -14,7 +14,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -34,6 +39,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.json.GoogleJsonError;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -85,14 +91,16 @@ public class GmailMailSource implements MailSource {
 
 	private final int batchLimit;
 
+	private final int fetchThreads;
+
 	@Autowired
 	public GmailMailSource(DataDir dataDir, TrackerProperties props) {
 		this(dataDir, GmailMailSource::browserSignIn, RequestThrottle.perSecond(gmailProps(props).requestsPerSecond()),
-				gmailProps(props).messagesPerRun());
+				gmailProps(props).messagesPerRun(), gmailProps(props).fetchThreadCount());
 	}
 
 	private static TrackerProperties.Gmail gmailProps(TrackerProperties props) {
-		return props.gmail() != null ? props.gmail() : new TrackerProperties.Gmail(0, 0);
+		return props.gmail() != null ? props.gmail() : new TrackerProperties.Gmail(0, 0, 0);
 	}
 
 	/**
@@ -133,6 +141,12 @@ public class GmailMailSource implements MailSource {
 	}
 
 	GmailMailSource(DataDir dataDir, Authorizer authorizer, RequestThrottle throttle, int batchLimit) {
+		this(dataDir, authorizer, throttle, batchLimit, TrackerProperties.Gmail.DEFAULT_FETCH_THREADS);
+	}
+
+	GmailMailSource(DataDir dataDir, Authorizer authorizer, RequestThrottle throttle, int batchLimit,
+			int fetchThreads) {
+		this.fetchThreads = Math.max(1, fetchThreads);
 		this.throttle = throttle;
 		this.batchLimit = batchLimit;
 		this.secretFile = dataDir.resolve("google-client-secret.json");
@@ -236,37 +250,104 @@ public class GmailMailSource implements MailSource {
 			}
 			while (pageToken != null);
 			Collections.reverse(ids);
+			List<String> toFetch = new ArrayList<>();
 			for (String id : ids) {
-				if (out.size() >= batchLimit) {
+				if (toFetch.size() >= batchLimit) {
 					break;
 				}
-				if (alreadyStored.test(id)) {
-					continue;
-				}
-				try {
-					throttle.acquire();
-					out.add(GmailMessageMapper.toMailMessage(get(gmail, id)));
-				}
-				catch (IOException e) {
-					if (e instanceof HttpResponseException h && h.getStatusCode() == 404) {
-						continue; // deleted between list and get
-					}
-					if (out.isEmpty()) {
-						throw e;
-					}
-					translate(e); // an auth failure is thrown now, never hidden in a partial result
-					// Keep what was fetched: returning fewer than batchLimit ends the sync loop cleanly, the
-					// high-water mark moves to the newest of these, and the next run meets the error again.
-					log.warn("Gmail fetch stopped after {} messages: {}", out.size(), e.getMessage());
-					break;
+				if (!alreadyStored.test(id)) {
+					toFetch.add(id);
 				}
 			}
+			out = fetchAll(gmail, toFetch);
 		}
 		catch (IOException e) {
 			throw translate(e);
 		}
 		out.sort(Comparator.comparing(MailMessage::receivedAt));
 		return out;
+	}
+
+	/** Public wrapper over {@link #fetchAll} for the replay command; errors are translated like {@link #fetchOne}. */
+	public List<MailMessage> fetchMany(List<String> messageIds) throws MailAuthException, MailSourceException {
+		Gmail gmail = gmail();
+		try {
+			return fetchAll(gmail, messageIds);
+		}
+		catch (IOException e) {
+			throw translate(e);
+		}
+	}
+
+	/**
+	 * Fetches the bodies concurrently (the shared throttle still caps the request rate) and returns the messages of
+	 * the longest contiguous prefix of {@code ids} that all succeeded, in {@code ids} order; 404s (deleted since the
+	 * list) are skipped without ending the prefix. Nothing newer than a failed message is returned, so the high-water
+	 * mark can never skip it. A failure at the very start is thrown, and so is an auth failure anywhere.
+	 */
+	List<MailMessage> fetchAll(Gmail gmail, List<String> ids) throws IOException {
+		List<MailMessage> out = new ArrayList<>();
+		if (ids.isEmpty()) {
+			return out;
+		}
+		ExecutorService pool = Executors.newFixedThreadPool(Math.min(fetchThreads, ids.size()));
+		try {
+			List<Future<Optional<MailMessage>>> futures = new ArrayList<>();
+			for (String id : ids) {
+				futures.add(pool.submit(() -> {
+					throttle.acquire();
+					try {
+						return Optional.of(GmailMessageMapper.toMailMessage(get(gmail, id)));
+					}
+					catch (HttpResponseException e) {
+						if (e.getStatusCode() == 404) {
+							return Optional.<MailMessage>empty();
+						}
+						throw e;
+					}
+				}));
+			}
+			IOException firstFailure = null;
+			for (Future<Optional<MailMessage>> future : futures) {
+				try {
+					Optional<MailMessage> message = future.get();
+					if (firstFailure == null) {
+						message.ifPresent(out::add);
+					}
+				}
+				catch (ExecutionException e) {
+					IOException failure = e.getCause() instanceof IOException io ? io
+							: new IOException("Gmail fetch failed: " + e.getCause(), e.getCause());
+					if (isAuthFailure(failure)) {
+						throw failure; // never hidden in a partial result
+					}
+					if (firstFailure == null) {
+						firstFailure = failure;
+						// nothing newer is kept, so stop gets that have not started; running ones finish
+						futures.forEach(f -> f.cancel(false));
+					}
+				}
+				catch (CancellationException e) {
+					// cancelled after the first failure; nothing to add
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new IOException("Gmail fetch interrupted", e);
+				}
+			}
+			if (firstFailure != null) {
+				if (out.isEmpty()) {
+					throw firstFailure;
+				}
+				// Keep the older prefix: returning fewer than batchLimit ends the sync loop cleanly, the high-water
+				// mark moves to the newest of these, and the next run meets the error again.
+				log.warn("Gmail fetch stopped after {} messages: {}", out.size(), firstFailure.getMessage());
+			}
+			return out;
+		}
+		finally {
+			pool.shutdownNow();
+		}
 	}
 
 	@Override
@@ -293,13 +374,16 @@ public class GmailMailSource implements MailSource {
 
 	/** Refresh/authorization failures become auth errors, everything else a source error. */
 	private static MailSourceException translate(IOException e) throws MailAuthException {
-		boolean auth = e instanceof TokenResponseException || e instanceof DpapiDataStoreFactory.UnreadableStoreException
-				|| (e instanceof HttpResponseException h && h.getStatusCode() == 401)
-				|| (e.getMessage() != null && e.getMessage().contains("invalid_grant"));
-		if (auth) {
+		if (isAuthFailure(e)) {
 			throw new MailAuthException("Gmail authorization failed - reconnect Gmail: " + e.getMessage(), e);
 		}
 		return new MailSourceException("Gmail request failed: " + e.getMessage(), e);
+	}
+
+	private static boolean isAuthFailure(IOException e) {
+		return e instanceof TokenResponseException || e instanceof DpapiDataStoreFactory.UnreadableStoreException
+				|| (e instanceof HttpResponseException h && h.getStatusCode() == 401)
+				|| (e.getMessage() != null && e.getMessage().contains("invalid_grant"));
 	}
 
 	private Gmail gmail() throws MailAuthException, MailSourceException {
@@ -343,20 +427,44 @@ public class GmailMailSource implements MailSource {
 				}
 				int code = response.getStatusCode();
 				if (code == 429 || code / 100 == 5) {
+					GoogleJsonResponseException e = GoogleJsonResponseException.from(json, response);
+					log.warn(retryMessage(code, e, req.getUrl()));
 					return backOff.handleResponse(req, response, supportsRetry);
 				}
 				if (code == 403) {
 					// the body is read once here; a non-retryable 403 is thrown from it so its details are kept
 					GoogleJsonResponseException e = GoogleJsonResponseException.from(json, response);
 					if (isRateLimitReason(e)) {
+						log.warn(retryMessage(code, e, req.getUrl()));
 						return backOff.handleResponse(req, response, supportsRetry);
 					}
 					throw e;
 				}
 				return false;
 			});
-			request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(backOff()).setSleeper(sleeper));
+			HttpBackOffIOExceptionHandler ioBackOff = new HttpBackOffIOExceptionHandler(backOff()).setSleeper(sleeper);
+			// the handler interface does not pass the exception itself, so only the request path can be logged
+			request.setIOExceptionHandler((req, supportsRetry) -> {
+				log.warn("Gmail I/O error for {}; retrying after back-off if the budget allows", req.getUrl().getRawPath());
+				return ioBackOff.handleIOException(req, supportsRetry);
+			});
 		};
+	}
+
+	/** One-line description of a retried response: status, Gmail's reason/message when present, URL path only. */
+	static String retryMessage(int code, GoogleJsonResponseException e, GenericUrl url) {
+		String detail = "";
+		GoogleJsonError details = e.getDetails();
+		if (details != null) {
+			String reason = details.getErrors() == null || details.getErrors().isEmpty() ? null
+					: details.getErrors().get(0).getReason();
+			detail = reason != null ? reason : "";
+			if (details.getMessage() != null && !details.getMessage().isBlank()) {
+				detail = detail.isEmpty() ? details.getMessage() : detail + ": " + details.getMessage();
+			}
+		}
+		return "Gmail returned " + code + (detail.isEmpty() ? "" : " (" + detail + ")") + " for " + url.getRawPath()
+				+ "; retrying after back-off";
 	}
 
 	private static boolean isRateLimitReason(GoogleJsonResponseException e) {
