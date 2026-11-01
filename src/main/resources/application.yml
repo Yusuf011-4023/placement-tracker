@@ -18,6 +18,7 @@ server:
   address: 127.0.0.1
   port: 8765
 tracker:
+  open-browser: true # open the tracker page after start; off for tests and --autostart
   sync:
     interval-minutes: 20
     backfill-from: 2026-06-01T00:00:00Z
