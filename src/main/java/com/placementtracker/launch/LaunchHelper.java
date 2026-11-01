@@ -38,6 +38,33 @@ public final class LaunchHelper {
 	}
 
 	/**
+	 * True when this launch is a plain one (no arguments, or only {@code --autostart}), which is the only form the
+	 * installed launcher uses. Dev commands and overrides such as {@code --server.port} must start normally rather
+	 * than be answered by a tracker that happens to be running on 8765.
+	 */
+	public static boolean shouldProbe(String[] args) {
+		if (args == null) {
+			return true;
+		}
+		for (String a : args) {
+			if (!"--autostart".equals(a)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** True when {@code t} or any cause is a "port already in use" failure. */
+	public static boolean isPortInUse(Throwable t) {
+		for (int depth = 0; t != null && depth < 20; depth++, t = t.getCause()) {
+			if (t instanceof java.net.BindException || "PortInUseException".equals(t.getClass().getSimpleName())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Largest response body read while probing. The dashboard JSON grows with the review list (about 40 KB with ~50
 	 * items), so this is generous; the timeout, not this cap, is what protects against a stalled stranger.
 	 */

@@ -45,6 +45,27 @@ class LaunchHelperTest {
 	}
 
 	@Test
+	void probesOnlyForPlainLaunches() {
+		assertThat(LaunchHelper.shouldProbe(new String[] {})).isTrue();
+		assertThat(LaunchHelper.shouldProbe(null)).isTrue();
+		assertThat(LaunchHelper.shouldProbe(new String[] { "--autostart" })).isTrue();
+		assertThat(LaunchHelper.shouldProbe(new String[] { "--server.port=0" })).isFalse();
+		assertThat(LaunchHelper.shouldProbe(new String[] { "--tracker.dev.prefilter-replay=true", "--server.port=0" }))
+				.isFalse();
+		assertThat(LaunchHelper.shouldProbe(new String[] { "--autostart", "--server.port=0" })).isFalse();
+	}
+
+	@Test
+	void portInUseDetectedInCauseChain() {
+		Throwable bind = new java.net.BindException("Address already in use");
+		assertThat(LaunchHelper.isPortInUse(bind)).isTrue();
+		assertThat(LaunchHelper.isPortInUse(new IllegalStateException("x", new RuntimeException("y", bind)))).isTrue();
+		assertThat(LaunchHelper.isPortInUse(new org.springframework.boot.web.server.PortInUseException(8765))).isTrue();
+		assertThat(LaunchHelper.isPortInUse(new IllegalStateException("other"))).isFalse();
+		assertThat(LaunchHelper.isPortInUse(null)).isFalse();
+	}
+
+	@Test
 	void runningWhenDashboardAnswersWithTrackerJson() throws IOException {
 		URI uri = serve(200, "{\"accounts\":[],\"chart\":[]}");
 		assertThat(LaunchHelper.trackerAlreadyRunning(uri, Duration.ofSeconds(2))).isTrue();
