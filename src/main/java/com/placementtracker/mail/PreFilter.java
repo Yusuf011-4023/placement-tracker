@@ -54,9 +54,15 @@ public class PreFilter {
 		List<String> addresses = new ArrayList<>();
 		List<String> blockedDomainList = new ArrayList<>();
 		for (String raw : entries) {
-			String entry = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+			String entry = raw == null ? "" : raw.replace("﻿", "").trim().toLowerCase(Locale.ROOT);
 			if (entry.isEmpty() || entry.startsWith("#")) {
 				continue;
+			}
+			if (entry.startsWith("@")) {
+				entry = entry.substring(1).trim();
+				if (entry.isEmpty()) {
+					continue;
+				}
 			}
 			List<String> target = entry.contains("@") ? addresses : blockedDomainList;
 			target.add(entry);

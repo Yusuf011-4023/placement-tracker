@@ -154,6 +154,23 @@ class PreFilterTest {
 	}
 
 	@Test
+	void blockedSendersFileWithBomIsLoaded(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("blocked-senders.txt");
+		byte[] bom = { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+		byte[] text = "shop.example.com\n@atdomain.example\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+		byte[] all = new byte[bom.length + text.length];
+		System.arraycopy(bom, 0, all, 0, bom.length);
+		System.arraycopy(text, 0, all, bom.length, text.length);
+		Files.write(file, all);
+		PreFilter filter = new PreFilter(
+				new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of(), List.of()), file);
+
+		assertThat(filter.shouldClassify(msg("x@shop.example.com", "Interview invitation", "", Set.of()))).isFalse();
+		assertThat(filter.shouldClassify(msg("x@mail.atdomain.example", "Interview invitation", "", Set.of())))
+			.isFalse();
+	}
+
+	@Test
 	void missingBlockedSendersFileIsFine(@TempDir Path dir) {
 		PreFilter filter = new PreFilter(
 				new PreFilterProperties(KEYWORDS, ATS_DOMAINS, List.of(), List.of()), dir.resolve("blocked-senders.txt"));
