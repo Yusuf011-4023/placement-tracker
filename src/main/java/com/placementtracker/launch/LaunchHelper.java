@@ -1,10 +1,13 @@
 package com.placementtracker.launch;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -15,14 +18,6 @@ public final class LaunchHelper {
 
 	public static final URI DASHBOARD = URI.create("http://127.0.0.1:8765/api/dashboard");
 	public static final URI HOME = URI.create("http://127.0.0.1:8765/");
-
-	static {
-		// The JDK client refuses to set Host unless allowed; this must be set before its first use.
-		String allowed = System.getProperty("jdk.httpclient.allowRestrictedHeaders", "");
-		if (!allowed.toLowerCase().contains("host")) {
-			System.setProperty("jdk.httpclient.allowRestrictedHeaders", allowed.isEmpty() ? "host" : allowed + ",host");
-		}
-	}
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -42,26 +37,44 @@ public final class LaunchHelper {
 		return false;
 	}
 
+	/** Largest response body read while probing; the tracker's dashboard JSON is far smaller than a stranger's page. */
+	private static final int MAX_BODY_BYTES = 64 * 1024;
+
 	/**
 	 * True only when {@code dashboard} answers 200 with a JSON object holding the tracker's {@code accounts} and
-	 * {@code chart} keys, so a stranger on the port is never mistaken for the tracker. Any failure gives false.
+	 * {@code chart} keys, so a stranger on the port is never mistaken for the tracker. The whole probe (connect,
+	 * headers and body) is bounded by {@code timeout}, and any failure gives false. For the real port the JDK client
+	 * sends {@code Host: 127.0.0.1:8765} itself, which is what LocalOnlyFilter accepts.
 	 */
 	public static boolean trackerAlreadyRunning(URI dashboard, Duration timeout) {
-		try {
-			HttpClient client = HttpClient.newBuilder().connectTimeout(timeout).build();
-			// LocalOnlyFilter only accepts 127.0.0.1:8765 / localhost:8765 as the Host, whatever port is probed.
-			HttpRequest request = HttpRequest.newBuilder(dashboard).timeout(timeout).header("Host", "127.0.0.1:8765")
-					.GET().build();
-			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-			if (response.statusCode() != 200) {
-				return false;
+		try (HttpClient client = HttpClient.newBuilder().connectTimeout(timeout).build()) {
+			HttpRequest request = HttpRequest.newBuilder(dashboard).timeout(timeout).GET().build();
+			CompletableFuture<Boolean> probe = client.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+					.thenApplyAsync(LaunchHelper::looksLikeTracker);
+			try {
+				return probe.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
 			}
-			JsonNode body = MAPPER.readTree(response.body());
-			return body != null && body.isObject() && body.has("accounts") && body.has("chart");
+			finally {
+				probe.cancel(true);
+				client.shutdownNow(); // releases a stalled read so close() does not wait for it
+			}
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			return false;
+		}
+		catch (Exception e) {
+			return false;
+		}
+	}
+
+	private static boolean looksLikeTracker(HttpResponse<InputStream> response) {
+		try (InputStream in = response.body()) {
+			if (response.statusCode() != 200) {
+				return false;
+			}
+			JsonNode body = MAPPER.readTree(in.readNBytes(MAX_BODY_BYTES));
+			return body != null && body.isObject() && body.has("accounts") && body.has("chart");
 		}
 		catch (Exception e) {
 			return false;

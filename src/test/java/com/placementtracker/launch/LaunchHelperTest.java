@@ -80,4 +80,32 @@ class LaunchHelperTest {
 		assertThat(running).isFalse();
 		assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
 	}
+
+	@Test
+	void notRunningWhenServerStallsAfterHeaders() throws Exception {
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+		server.createContext("/api/dashboard", ex -> {
+			try {
+				ex.sendResponseHeaders(200, 100);
+				ex.getResponseBody().flush();
+				release.await(10, java.util.concurrent.TimeUnit.SECONDS);
+			}
+			catch (InterruptedException | IOException ignored) {
+			}
+			finally {
+				ex.close();
+			}
+		});
+		server.start();
+		URI uri = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/api/dashboard");
+		long start = System.nanoTime();
+		try {
+			assertThat(LaunchHelper.trackerAlreadyRunning(uri, Duration.ofMillis(300))).isFalse();
+			assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofMillis(1500));
+		}
+		finally {
+			release.countDown();
+		}
+	}
 }
