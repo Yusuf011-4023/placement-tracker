@@ -81,4 +81,29 @@ connectButton.addEventListener("click", async () => {
   }
 });
 
+const autostartBox = document.getElementById("autostart");
+const autostartNote = document.getElementById("autostart-note");
+
+async function loadAutostart() {
+  try {
+    const state = await api("GET", "/api/autostart");
+    autostartBox.checked = state.enabled;
+    autostartBox.disabled = !state.available;
+    autostartNote.textContent = state.available ? "" : "Available in the installed app";
+  } catch (e) {
+    autostartNote.textContent = "Cannot read auto-start status";
+  }
+}
+
+autostartBox.addEventListener("change", async () => {
+  const wanted = autostartBox.checked;
+  try {
+    const state = await api("PUT", "/api/autostart", { enabled: wanted });
+    autostartBox.checked = state.enabled;
+  } catch (e) {
+    autostartBox.checked = !wanted; // api() already showed the error toast
+  }
+});
+
 refresh();
+loadAutostart();
