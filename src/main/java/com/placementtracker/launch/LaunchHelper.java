@@ -37,8 +37,11 @@ public final class LaunchHelper {
 		return false;
 	}
 
-	/** Largest response body read while probing; the tracker's dashboard JSON is far smaller than a stranger's page. */
-	private static final int MAX_BODY_BYTES = 64 * 1024;
+	/**
+	 * Largest response body read while probing. The dashboard JSON grows with the review list (about 40 KB with ~50
+	 * items), so this is generous; the timeout, not this cap, is what protects against a stalled stranger.
+	 */
+	private static final int MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 	/**
 	 * True only when {@code dashboard} answers 200 with a JSON object holding the tracker's {@code accounts} and
