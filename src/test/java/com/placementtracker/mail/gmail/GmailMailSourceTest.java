@@ -19,7 +19,6 @@ import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.auth.oauth2.StoredCredential;
 import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponse;
@@ -120,7 +119,7 @@ class GmailMailSourceTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(200); // 429 and 503 were retried with backoff
 		assertThat(authHeaders).hasSize(3).allMatch("Bearer token-1"::equals);
-		assertThat(request.getIOExceptionHandler()).isInstanceOf(HttpBackOffIOExceptionHandler.class);
+		assertThat(request.getIOExceptionHandler()).isNotNull();
 	}
 
 	private static MockHttpTransport sequence(List<Integer> statuses, List<String> bodies, List<Integer> calls) {
@@ -148,6 +147,42 @@ class GmailMailSourceTest {
 		Credential credential = new Credential(BearerToken.authorizationHeaderAccessMethod()).setAccessToken("t");
 		return transport.createRequestFactory(GmailMailSource.requestInitializer(credential, ms -> slept.add(ms)))
 				.buildGetRequest(new GenericUrl("https://gmail.googleapis.com/gmail/v1/users/me/messages/x"));
+	}
+
+	@Test
+	void eachRetryLogsOneWarnWithStatusReasonAndPathOnly() throws Exception {
+		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory
+				.getLogger(GmailMailSource.class);
+		ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.read.ListAppender<>();
+		appender.start();
+		logger.addAppender(appender);
+		try {
+			MockHttpTransport transport = sequence(new ArrayList<>(List.of(429, 200)),
+					new ArrayList<>(List.of(error(429, "rateLimitExceeded"), "{}")), new ArrayList<>());
+
+			request(transport, new ArrayList<>()).execute();
+
+			assertThat(appender.list).hasSize(1);
+			assertThat(appender.list.get(0).getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN);
+			assertThat(appender.list.get(0).getFormattedMessage())
+					.isEqualTo("Gmail returned 429 (rateLimitExceeded: m) for /gmail/v1/users/me/messages/x; retrying after back-off");
+		}
+		finally {
+			logger.detachAppender(appender);
+		}
+	}
+
+	@Test
+	void retryMessageOmitsQueryAndHandlesMissingDetails() throws Exception {
+		MockHttpTransport transport = sequence(new ArrayList<>(List.of(503)), new ArrayList<>(List.of("not json")),
+				new ArrayList<>());
+		HttpRequest req = transport.createRequestFactory().buildGetRequest(new GenericUrl("https://g/x/y?access_token=secret"));
+		req.setThrowExceptionOnExecuteError(false);
+		com.google.api.client.googleapis.json.GoogleJsonResponseException e = com.google.api.client.googleapis.json.GoogleJsonResponseException
+				.from(com.google.api.client.json.gson.GsonFactory.getDefaultInstance(), req.execute());
+
+		assertThat(GmailMailSource.retryMessage(503, e, req.getUrl()))
+				.isEqualTo("Gmail returned 503 for /x/y; retrying after back-off");
 	}
 
 	@Test

@@ -92,11 +92,15 @@ class GmailFetchTest {
 	}
 
 	private GmailMailSource source(int batchLimit) throws Exception {
+		return source(batchLimit, TrackerProperties.Gmail.DEFAULT_FETCH_THREADS);
+	}
+
+	private GmailMailSource source(int batchLimit, int threads) throws Exception {
 		Files.writeString(tmp.resolve("google-client-secret.json"), "{}", StandardCharsets.UTF_8);
 		DataDir dir = new DataDir(new TrackerProperties(tmp, null, null, null));
 		return new GmailMailSource(dir, flow -> {
 		}, new RequestThrottle(1_000_000, System::nanoTime, nanos -> {
-		}), batchLimit);
+		}), batchLimit, threads);
 	}
 
 	/** Records the get, waits on the gate if one is set, and returns a forced failure status for the id or null. */
@@ -238,5 +242,17 @@ class GmailFetchTest {
 
 		assertThatThrownBy(() -> source.fetchSince(gmail(20), Instant.parse("2026-06-01T00:00:00Z"), id -> false))
 				.isInstanceOf(MailAuthException.class);
+	}
+
+	@Test
+	void firstFailureStopsQueuedGets() throws Exception {
+		GmailMailSource source = source(100, 2);
+		failIds.put("m2", 500);
+		gate = new CountDownLatch(2); // m1 and m2 are inside together, so m3.. are still queued
+
+		List<MailMessage> batch = source.fetchAll(gmail(8), List.of("m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"));
+
+		assertThat(batch).extracting(MailMessage::messageId).containsExactly("m1");
+		assertThat(fetched.size()).isLessThan(8);
 	}
 }

@@ -107,7 +107,7 @@ If Google stops accepting the stored sign-in (for example you revoked access, ch
 
 Before an email goes to Claude, a local pre-filter drops obvious noise. Keywords match whole words only. To stop specific senders (for example a shop's newsletters) ever reaching Claude, create `blocked-senders.txt` in the data folder (`%LOCALAPPDATA%\PlacementTracker`). Put one address or domain per line; a domain also covers its subdomains. Lines starting with `#` and blank lines are ignored, and case does not matter. Changes take effect on restart. A missing file is fine. Mail from a blocked sender is dropped even if it comes from a job-board domain, so only list senders that never send applications.
 
-To check that the current rules would not have dropped any email that mattered, replay your stored emails through the filter. It only reads (it fetches message bodies from Gmail and changes nothing), then exits. Run it while the tracker is stopped or on another port:
+To check that the current rules would not have dropped any email that mattered, replay your stored emails through the filter. It only reads (it fetches message bodies from Gmail and changes nothing), then exits. Stop the tracker first if you can (both share Gmail's per-user limits); it is safe either way. Otherwise run it on another port:
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="--tracker.dev.prefilter-replay=true --server.port=0 --tracker.sync.scheduler-enabled=false"

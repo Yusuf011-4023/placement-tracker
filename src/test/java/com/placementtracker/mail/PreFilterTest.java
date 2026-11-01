@@ -187,4 +187,15 @@ class PreFilterTest {
 
 		assertThat(filter.shouldClassify(msg("a@x.example", "Interview invitation", "", Set.of()))).isTrue();
 	}
+
+	@Test
+	void atsConflictsFindsEqualAndParentDomainsOnly() {
+		List<String> ats = List.of("myworkday.com", "linkedin.com", "jobs.lever.co");
+
+		assertThat(PreFilter.atsConflicts(List.of("linkedin.com", "com", "lever.co", "other.org", "mail.myworkday.com"),
+				ats)).containsOnlyKeys("linkedin.com", "com", "lever.co")
+			.containsEntry("linkedin.com", "linkedin.com")
+			.containsEntry("com", "myworkday.com")
+			.containsEntry("lever.co", "jobs.lever.co");
+	}
 }

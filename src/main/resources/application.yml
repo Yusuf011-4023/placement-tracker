@@ -24,7 +24,7 @@ tracker:
   gmail:
     max-requests-per-second: 10 # about 3,000 of Gmail's 6,000 quota units per minute (messages.get costs 5)
     max-messages-per-run: 500 # full bodies fetched per batch, oldest first
-    fetch-threads: 8 # bodies fetched at once; the throttle still caps the total rate
+    fetch-threads: 4 # bodies fetched at once; the throttle still caps the total rate. Raise only if the log shows no back-off
   ai:
     model: claude-haiku-5-5
     confidence-threshold: 0.7
@@ -43,11 +43,13 @@ tracker:
       - year in industry
       - assessment*
       - online test
+      - online tests
       - test invitation
       - interview*
       - assessment centre
       - candidate*
       - offer
+      - offered
       - recruit*
       - talent
       - hiring
@@ -55,7 +57,9 @@ tracker:
       - vacancy
       - vacancies
       - position
+      - positions
       - role
+      - roles
       - shortlist*
       - next steps
       - unfortunately

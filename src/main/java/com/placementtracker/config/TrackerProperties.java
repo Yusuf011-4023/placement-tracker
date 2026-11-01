@@ -17,7 +17,7 @@ public record TrackerProperties(Path dataDir, Sync sync, Ai ai, Gmail gmail) {
 
 		public static final int DEFAULT_REQUESTS_PER_SECOND = 10;
 		public static final int DEFAULT_MESSAGES_PER_RUN = 500;
-		public static final int DEFAULT_FETCH_THREADS = 8;
+		public static final int DEFAULT_FETCH_THREADS = 4;
 
 		public int fetchThreadCount() {
 			return fetchThreads > 0 ? fetchThreads : DEFAULT_FETCH_THREADS;

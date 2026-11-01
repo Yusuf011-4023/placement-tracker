@@ -14,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +39,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.json.GoogleJsonError;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -321,7 +323,12 @@ public class GmailMailSource implements MailSource {
 					}
 					if (firstFailure == null) {
 						firstFailure = failure;
+						// nothing newer is kept, so stop gets that have not started; running ones finish
+						futures.forEach(f -> f.cancel(false));
 					}
+				}
+				catch (CancellationException e) {
+					// cancelled after the first failure; nothing to add
 				}
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
@@ -420,20 +427,44 @@ public class GmailMailSource implements MailSource {
 				}
 				int code = response.getStatusCode();
 				if (code == 429 || code / 100 == 5) {
+					GoogleJsonResponseException e = GoogleJsonResponseException.from(json, response);
+					log.warn(retryMessage(code, e, req.getUrl()));
 					return backOff.handleResponse(req, response, supportsRetry);
 				}
 				if (code == 403) {
 					// the body is read once here; a non-retryable 403 is thrown from it so its details are kept
 					GoogleJsonResponseException e = GoogleJsonResponseException.from(json, response);
 					if (isRateLimitReason(e)) {
+						log.warn(retryMessage(code, e, req.getUrl()));
 						return backOff.handleResponse(req, response, supportsRetry);
 					}
 					throw e;
 				}
 				return false;
 			});
-			request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(backOff()).setSleeper(sleeper));
+			HttpBackOffIOExceptionHandler ioBackOff = new HttpBackOffIOExceptionHandler(backOff()).setSleeper(sleeper);
+			// the handler interface does not pass the exception itself, so only the request path can be logged
+			request.setIOExceptionHandler((req, supportsRetry) -> {
+				log.warn("Gmail I/O error for {}; retrying after back-off if the budget allows", req.getUrl().getRawPath());
+				return ioBackOff.handleIOException(req, supportsRetry);
+			});
 		};
+	}
+
+	/** One-line description of a retried response: status, Gmail's reason/message when present, URL path only. */
+	static String retryMessage(int code, GoogleJsonResponseException e, GenericUrl url) {
+		String detail = "";
+		GoogleJsonError details = e.getDetails();
+		if (details != null) {
+			String reason = details.getErrors() == null || details.getErrors().isEmpty() ? null
+					: details.getErrors().get(0).getReason();
+			detail = reason != null ? reason : "";
+			if (details.getMessage() != null && !details.getMessage().isBlank()) {
+				detail = detail.isEmpty() ? details.getMessage() : detail + ": " + details.getMessage();
+			}
+		}
+		return "Gmail returned " + code + (detail.isEmpty() ? "" : " (" + detail + ")") + " for " + url.getRawPath()
+				+ "; retrying after back-off";
 	}
 
 	private static boolean isRateLimitReason(GoogleJsonResponseException e) {

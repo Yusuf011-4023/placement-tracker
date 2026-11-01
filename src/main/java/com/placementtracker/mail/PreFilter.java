@@ -54,7 +54,7 @@ public class PreFilter {
 		List<String> addresses = new ArrayList<>();
 		List<String> blockedDomainList = new ArrayList<>();
 		for (String raw : entries) {
-			String entry = raw == null ? "" : raw.replace("﻿", "").trim().toLowerCase(Locale.ROOT);
+			String entry = raw == null ? "" : raw.replace("\uFEFF", "").trim().toLowerCase(Locale.ROOT);
 			if (entry.isEmpty() || entry.startsWith("#")) {
 				continue;
 			}
@@ -69,6 +69,22 @@ public class PreFilter {
 		}
 		this.blockedAddresses = List.copyOf(addresses);
 		this.blockedDomains = List.copyOf(blockedDomainList);
+		atsConflicts(blockedDomains, domains).forEach((blocked, ats) -> log.warn(
+				"blocked-senders entry '{}' blocks ATS domain {}; applications from it will be filtered", blocked, ats));
+	}
+
+	/** Maps each blocked domain that equals, or is a parent of, an ATS domain to the first such ATS domain. */
+	static java.util.Map<String, String> atsConflicts(List<String> blocked, List<String> atsDomains) {
+		java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+		for (String b : blocked) {
+			for (String ats : atsDomains) {
+				if (ats.equals(b) || ats.endsWith("." + b)) {
+					out.putIfAbsent(b, ats);
+					break;
+				}
+			}
+		}
+		return out;
 	}
 
 	public boolean shouldClassify(MailMessage m) {
