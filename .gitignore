@@ -10,3 +10,5 @@ src/test/resources/eval/private/
 *.iml
 logs/
 *.db-*
+blocked-senders.txt
+*.log

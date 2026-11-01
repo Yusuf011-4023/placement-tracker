@@ -228,3 +228,11 @@ src/main/resources/static/   the web UI
 src/test/                    unit, integration and eval tests
 docs/                        design spec
 ```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a problem privately.
+
+## Licence
+
+[MIT](LICENSE)
