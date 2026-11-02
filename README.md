@@ -20,9 +20,19 @@ I built it because I kept losing track of applications in my inbox. Confirmation
 
 ## Screenshots
 
-<!-- OWNER: take screenshots using the fake seed data (see "Trying the UI with fake data" below), never real email, and drop them into docs/screenshots/. Then link them here, e.g. ![Dashboard](docs/screenshots/dashboard.png) -->
+All screenshots use the made-up sample data (see "Trying the UI with fake data" below), never real email.
 
-_Screenshots to be added._
+The dashboard: a donut chart of applications by stage, what needs action next, the Please check queue, and a board by stage.
+
+![Dashboard in light mode](docs/screenshots/dashboard-light.png)
+
+Dark mode follows Windows:
+
+![Dashboard in dark mode](docs/screenshots/dashboard-dark.png)
+
+The setup page, for connecting Gmail and turning on start at login:
+
+![Setup page](docs/screenshots/setup.png)
 
 ## Architecture
 
